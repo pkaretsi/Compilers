@@ -1,0 +1,52 @@
+program example3
+	declare a,b,c,d,e,x,y,px,py,temp;
+	// try var name with more than 30 characters
+	declare abcdefghijklmnopqrstuv;
+	declare outofboundsvar; 
+	declare constant1 := 5;
+	declare constant2 := a;
+	declare variabl e;
+	//try for keyword variable
+	declare if;
+	const shit
+	
+	loop
+		
+		//try out of bounds value
+		outofboundsvar := 32768
+		
+		/* /* nmnm */
+		
+		if (not [a<c and b<d]) then
+			exit
+		endif;
+		
+		
+		//try invalid declaration
+		for 
+		
+		//if ( (a=c and b<d) then 
+		
+			//floating point number
+			outofboundsvar := 2.5
+		
+		// opening two parenthesis
+			exit
+		endif;
+		
+		if (a=e) then
+			c:=c+e
+		else
+			loop
+				if (not [a<=d]) then
+					exit
+				endif;
+				a:=a+b
+			endloop
+		endif
+	endloop;
+	temp:=px;
+	x:=1;
+	y:=2
+endprogram
+try this
