@@ -1,0 +1,52 @@
+/*This is a Starlet test program. 
+Includes an example of every structure we have implemented to support.
+In comments you can find error cases that our compiler successfully recognises. */
+
+program test
+	declare x,y,z,w,g,ab;
+	
+	function a(in x, inandout w)
+		function b(inout z)
+			z:=z+3;
+			if (z>4) then
+				print z*2
+			else
+				z:=0
+			endif
+		endfunction
+		
+		x :=x+8;
+		while (x>10)
+			x := b(inout x, inandout w)
+		endwhile
+	endfunction
+	
+	y:=4;
+	dowhile
+		if (y>=6) then
+			z := y+2
+		endif;
+		y:=y+1
+	enddowhile (y>12);
+	
+	loop
+		input w;
+		if(not [w>=5]) then
+			exit
+		endif;
+		ab := 3
+	endloop;
+	
+	forcase
+		when (ab<>3): print ab
+		when ([y>5 and z>10 or ab=3]): return y+z
+		default: print x enddefault
+	endforcase;
+	
+	incase
+		when (x+y <> z+w): print x+y
+		when (z<3) : print z
+	endincase
+	
+endprogram
+		
