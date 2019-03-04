@@ -27,11 +27,11 @@ counter = 0 #max id size = 30
 #state-1 - error
 #state100 - final states (+eof)
 #define constants
-binded_words = ['program', 'endprogram', 'declare', 'if', 'then', 'else', 'endif', 'do', 'while', 'endwhile', 'loop', 'endloop', 'exit', 'forcase', 'endforcase',
+binded_words = ['program', 'endprogram', 'declare', 'if', 'then', 'else', 'endif', 'while', 'endwhile', 'dowhile', 'enddowhile', 'loop', 'endloop', 'exit', 'forcase', 'endforcase',
                 'incase', 'endincase', 'when', 'default', 'enddefault', 'function', 'endfunction', 'return', 'in', 'inout', 'inandout', 'and', 'or', 'not', 'input', 'print']
 #extras
 IDTK = 'id'
-indo_while = False
+#indo_while = False
 endOfFile = False
 
 def displayError(msg):
@@ -280,19 +280,19 @@ def assignment_stat():
     #   displayError('Error16: Expecting variable\'s identifier. Terminating program')        
 
 def statement():
-    global indo_while
+    #global indo_while
     if(tokenID == IDTK): #assignment-statement, begin with variable
         assignment_stat()
     if(tokenID == 'if'):
         if_stat()
     if(tokenID == 'while'):
-        print('#############')
+        '''print('#############')
         if(indo_while):
             indo_while = False
-        else:
-            while_stat()
-    if(tokenID == 'do'):
-        print('*************')
+        else:'''
+        while_stat()
+    if(tokenID == 'dowhile'):
+        #print('*************')
         do_while_stat()
     if(tokenID == 'loop'):
         loop_stat()
@@ -344,12 +344,12 @@ def while_stat():
     #    displayError('Error25: Expecting binded word "while". Terminating program') #Not necessary        
 
 def do_while_stat():
-    global indo_while
-    indo_while = True
+    #global indo_while
+    #indo_while = True
     #if(tokenID == DOTK): #maybe this while is unnecessary
     lex()
     statements()
-    if(tokenID == 'while'):
+    if(tokenID == 'enddowhile'):
         lex()
         if(tokenID == '('):
             lex()
@@ -421,6 +421,7 @@ def forcase_stat():
             
 def incase_stat():
     #if(token == incase): #statements
+    lex()
     while(tokenID == 'when'):
         lex()
         if(tokenID == '('):
