@@ -6,13 +6,23 @@ token = '' #string returned by lex
 tokenID = '' #id returned by lex
 fline = 1 #initialize file line
 state = 0 #initialize state
-buffer = []  
+buffer = [] #where token is stored temporarily
+counter = 0 #max id size = 30
+
+#-----List of characters used in Starlet programs-----#
 whiteletters = list(string.whitespace)
-#del whiteletters[2]
 letters = list(string.ascii_letters)
 digits = list(string.digits)
 usedChars = whiteletters+letters+digits+['+','-','*','/','','=','>','<','(',')','[',']',',',';',':']
-counter = 0 #max id size = 30
+#define constants
+binded_words = ['program', 'endprogram', 'declare', 'if', 'then', 'else', 'endif', 'while', 'endwhile', 'dowhile', 'enddowhile', 'loop', 'endloop', 'exit', 'forcase', 'endforcase',
+                'incase', 'endincase', 'when', 'default', 'enddefault', 'function', 'endfunction', 'return', 'in', 'inout', 'inandout', 'and', 'or', 'not', 'input', 'print']
+#extras
+IDTK = 'id' #tokenID for identifiers
+endOfFile = False #True when reached EOF
+endProgram = False #True when recognize endprogram
+
+#-----Different states of Lex()-----# 
 #state0 - start
 #state1 - id
 #state2 - constant
@@ -20,46 +30,37 @@ counter = 0 #max id size = 30
 #state4 - one line comment
 #state5 - /* ... */
 #state6,11 - nested comments
-#state7 - end of comment
+#state7 - end of multiple comments
 #state8 - less than
 #state9 - greater than
-#state10 - :
-#state-1 - error
-#state100 - final states (+eof)
-#define constants
-binded_words = ['program', 'endprogram', 'declare', 'if', 'then', 'else', 'endif', 'while', 'endwhile', 'dowhile', 'enddowhile', 'loop', 'endloop', 'exit', 'forcase', 'endforcase',
-                'incase', 'endincase', 'when', 'default', 'enddefault', 'function', 'endfunction', 'return', 'in', 'inout', 'inandout', 'and', 'or', 'not', 'input', 'print']
-#extras
-IDTK = 'id'
-#indo_while = False
-endOfFile = False
+#state10 - semicolon
+#state100 - final states
 
-def displayError(msg):
+def displayError(msg): #Prints error message and terminates compiler
     print('Error at line '+str(fline)+ '\n' +msg)
     sys.exit()
- 
+
+#-----Lexical Analyzer-----# 
 def lex():
-    global tokenID, token, fline, f, buffer, counter, state, endOfFile
-    counter = 0
+    global tokenID, token, fline, f, buffer, counter, state, endOfFile, endProgram
+    #initial values every time lex() begins
+    counter = 0 
     state = 0
     my_pos = 0
-    buffer = list()
-    while(state!=100):# and state!=-1):
-        print('Entering at pos ',f.tell())
-        my_pos = f.tell()
+    buffer = list() #clear buffer
+    while(state!=100):
+        my_pos = f.tell() #save current position, needed later when have to return back
         ch = f.read(1)
-        
-        print('Buf', f.tell(), 'Ch', ch)
+        #print('Buf', f.tell(), 'Ch', ch)
         buffer.append(ch)
         if(state==0 and ch in whiteletters):
-            #state = 0
-            del buffer[len(buffer)-1] #same in comments
+            del buffer[len(buffer)-1] #ignore whitespaces
             if(ch=='\n'):
                 fline+=1
-        elif(state==0 and ch in letters):
+        elif(state==0 and ch in letters): #going to recognize an identifier
             state = 1
             counter +=1
-        elif(state==0 and ch in digits):
+        elif(state==0 and ch in digits): #going to recognize a constant
             state = 2
         elif(state==0 and (ch=='+' or ch=='-' or ch=='*' or ch==',' or ch==';')):
             token = ''.join(buffer)
@@ -74,70 +75,52 @@ def lex():
         elif(state==0 and ch=='>'):
             state = 9
         elif(state==0 and ch==':'):
-            #print('Xanamphka')
             state = 10
         elif(state==0 and ch==''):
-            #if(endOfFile != True):
             token = ''.join(buffer)
             tokenID = 'EOF'
-            state = 100 #eof - maybe tokens?
+            state = 100
         elif(state==0 and ch=='/'):
-            #print('Vrhka diairesh')
             state = 3
-        elif(state==0 and ch not in usedChars):
-        #elif(state==0 and not(ch in letters)and not(ch in whiteletters) and not(ch in digits) and ch!='+' and ch!='-' and ch!='*' and ch!='/' and ch!=',' and ch!=';'
-        #     and ch!='=' and ch!='(' and ch!=')' and ch!='[' and ch!=']' and ch!=':' and ch!='<' and ch!='>' and ch!=''):
-            displayError('Not accepted character. Exiting lex')
-        elif(state==1 and (ch in letters or ch in digits)):# and counter<30):
+        elif(state==0 and ch not in usedChars): #character not included in Starlet's vocabulary
+            displayError('Not accepted character. Exiting compile')
+        elif(state==1 and (ch in letters or ch in digits)):
             state = 1
             counter +=1
-        elif(state==1 and not(ch in letters or ch in digits)):# and counter<30)):
+        elif(state==1 and not(ch in letters or ch in digits)):
             state = 100
             del buffer[len(buffer)-1]
-            print('Last Character', ch)
-            print(f.tell())
-            #print(buffer)
             if(counter>30):
                 token = ''.join(buffer[:30])
             else:
                 token = ''.join(buffer)
-            print(token)
-            if(token in binded_words):
+            if(token in binded_words): #recognize binded words
                 tokenID = token
             else:
                 tokenID = 'id'
-            #pos = f.tell() - 1
-            #print('Ending id', pos)
-            if(ch==''):
+            if(tokenID == 'endprogram'):
+                endProgram = True
+            if(ch==''): #when reading endprogram
                 endOfFile = True
                 state = 100
             else:
-                print('pos before', f.tell())
-                f.seek(my_pos)
-                print('New pos', f.tell())
-            #print('New pos', f.tell())
-        #elif(state==2 and ch in digits):
-        #    state = 2
+                f.seek(my_pos) #go back one position
         elif(state==2 and ch in letters):
             displayError('Cannot accept identifier\'s name starting with a digit. Terminating program')
         elif(state==2 and not((ch in letters or ch in digits))):
             del buffer[len(buffer)-1]
-            token = ''.join(buffer) #maybe int(str(buffer))
-            if(int(token)>32767):
+            token = ''.join(buffer)
+            if(int(token)>32767): #constant in range [-32767,32767]
                 displayError('Absolute value of constants cannot exceed value 32767. Terminating program')
             else:
                 tokenID = 'constant'
                 state = 100
                 f.seek(my_pos)
         elif(state==3 and ch=='/'):
-            #print('Mphka')
-            state=4
+            state=4 
         elif(state==3 and ch=='*'):
-            #print(ch)
-            #print('Mphkaaaaaa')
             state=5
-        elif(state==3 and ch!='/' and ch!='*'):
-            #print('Found what ? after /', ch)
+        elif(state==3 and ch!='/' and ch!='*'): #recognize division operator
             del buffer[len(buffer)-1]
             token = ''.join(buffer)
             tokenID = '/'
@@ -148,21 +131,21 @@ def lex():
             state=0
             buffer.clear()
         elif(state==4 and ch==''):
-            displayError('File ended without ending comments. Terminating program.')
+            if(not endProgram):
+                displayError('File ended without ending comments. Terminating program.')
+            else:
+                endOfFile = True
+                state = 100
         elif(state==4 and ch=='/'):
             state=11   
         elif(state==5 and ch=='/'):
             state=6
         elif(state==5 and ch=='\n'):
              fline +=1
-             #state=5
         elif(state==5 and ch=='*'):
             state=7
         elif(state==5 and ch==''):
-            #print('Character":', ch)
             displayError('File ended without closing comments. Terminating program.')
-        #elif(state==5 and ch!='/' and ch!='\n' and ch!='*' and ch!=''):
-        #    state=5
         elif(state==6 and ch=='*'):
             displayError('Cannot accept nested comments. Terminating program.')
         elif(state==6 and ch=='/'):
@@ -171,7 +154,7 @@ def lex():
             displayError('File ended without closing comments. Terminating program.')
         elif(state==6 and ch!='*' and ch!='/' and ch!=''):
             state=5
-        elif(state==7 and ch=='/'):
+        elif(state==7 and ch=='/'): #close multiple comment
             state=0
             buffer.clear()
         elif(state==7 and ch!='/'):
@@ -203,7 +186,6 @@ def lex():
             tokenID = '>'
             f.seek(my_pos)
         elif(state==10 and ch=='='):
-            #print('Mphkaa')
             state = 100
             token = ''.join(buffer)
             tokenID = ':='
@@ -214,28 +196,32 @@ def lex():
             tokenID = ':'
             f.seek(my_pos)
         elif(state==11 and ch=='*'):
-            dislayError('Cannot accept nested comments (single line-multiple line comments). Terminating program.')
+            displayError('Cannot accept nested comments (single line-multiple line comments). Terminating program.')
         elif(state==11 and ch=='/'):
-            dislayError('Cannot accept nested single line comments. Terminating program.')
+            displayError('Cannot accept nested single line comments. Terminating program.')
         elif(state==11 and ch==''):
-            displayError('File ended without closing comments. Terminating program.')
+            if(not endProgram):
+                displayError('File ended without ending comments. Terminating program.')
+            else:
+                endOfFile = True
+                state = 100
         elif(state==11 and ch=='\n'):
             fline +=1
             state=0
         elif(state==11 and ch!='*' and ch!='/' and ch!=''):
             state=4
-        #elif(state==100):
-        #    return
-    
+    #print(token)    
 
-#Definition of grammar rules of Starlet#
-def block():
-    declarations()
-    subprograms()
-    statements()
+#-----Definition of Starlet's grammar rules-----#
+def assignment_stat():
+    lex()
+    if(tokenID == ':='):
+        lex()
+        expression()
+    else:
+        displayError('Error14: Expecting assignment operator, instead of '+ tokenID+'.\nTerminating program')
 
 def if_stat():
-    #if(tokenID == IFTK): #maybe this if is unnecessary
     lex()
     if(tokenID == '('):
         lex()
@@ -246,11 +232,8 @@ def if_stat():
                 lex()
                 statements()
                 elsepart()
-                print('@@@@@@@@@@@@@@@@@',token, ' ', tokenID)
                 if(tokenID == 'endif'):
-                    print('Ending if',token, ' ', tokenID)
                     lex()
-                    print('After lex endif',token, ' ', tokenID)
                 else:
                     displayError('Error15: Expecting binded word "endif", instead of '+ tokenID+'.\nTerminating program')
             else:
@@ -259,72 +242,13 @@ def if_stat():
             displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
     else:
         displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #    displayError('Error21: Expecting binded word "if". Terminating program') #Not necessary
-
-    
-def assignment_stat():
-    #if(tokenID == IDTK): #maybe not necessary, use this function after checking statement, same for else statement
-    #print('assignment')
-    lex()
-    print('1',tokenID)
-    if(tokenID == ':='):
-        #print('assignment1')
-        lex()
-        print('2',tokenID)
-        expression()
-    else:
-        #print('assignment2')
-        displayError('Error14: Expecting assignment operator, instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #   displayError('Error16: Expecting variable\'s identifier. Terminating program')        
-
-def statement():
-    #global indo_while
-    if(tokenID == IDTK): #assignment-statement, begin with variable
-        assignment_stat()
-    if(tokenID == 'if'):
-        if_stat()
-    if(tokenID == 'while'):
-        '''print('#############')
-        if(indo_while):
-            indo_while = False
-        else:'''
-        while_stat()
-    if(tokenID == 'dowhile'):
-        #print('*************')
-        do_while_stat()
-    if(tokenID == 'loop'):
-        loop_stat()
-    if(tokenID == 'exit'):
-        exit_stat()
-    if(tokenID == 'forcase'):
-        forcase_stat()
-    if(tokenID == 'incase'):
-        incase_stat()
-    if(tokenID == 'return'):
-        return_stat()
-    if(tokenID == 'input'):
-        input_stat()
-    if(tokenID == 'print'):
-        print_stat()
-    #no else, e is permitted
-
-def statements():
-    statement()
-    while(tokenID == ';'):
-        print('Enter multiple statements')
-        lex()
-        statement()
 
 def elsepart():
     if(tokenID == 'else'):
         lex()
         statements()
-    #else not necessary, e is permitted
 
 def while_stat():
-    #if(tokenID == WHILETK): #maybe this while is unnecessary
     lex()
     if(tokenID == '('):
         lex()
@@ -340,13 +264,8 @@ def while_stat():
             displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
     else:
         displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #    displayError('Error25: Expecting binded word "while". Terminating program') #Not necessary        
 
 def do_while_stat():
-    #global indo_while
-    #indo_while = True
-    #if(tokenID == DOTK): #maybe this while is unnecessary
     lex()
     statements()
     if(tokenID == 'enddowhile'):
@@ -361,29 +280,20 @@ def do_while_stat():
         else:
             displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
     else:
-        displayError('Error18: Expecting binded word "while", instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #    displayError('Error29: Expecting binded word "do". Terminating program') #Not necessary
-
+        displayError('Error18: Expecting binded word "enddowhile", instead of '+ tokenID+'.\nTerminating program')
+    
 def loop_stat():
-    #if(tokenID == LOOPTK): #not necessary?
     lex()
     statements()
     if(tokenID == 'endloop'):
         lex()
     else:
         displayError('Error19: Expecting binded word "endloop", instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #    displayError('Error31: Expecting binded word "loop". Terminating program')
 
 def exit_stat():
-    #if(tokenID == EXITTK):
     lex()
-    #else:
-    #    displayError('Error32: Expecting binded word "exit". Terminating program')
 
 def forcase_stat():
-    #if(token == 'forcase'):#statements
     lex()
     while(tokenID == 'when'):
         lex()
@@ -420,7 +330,6 @@ def forcase_stat():
         displayError('Error23: Expecting binded word "default", instead of '+ tokenID+'.\nTerminating program')
             
 def incase_stat():
-    #if(token == incase): #statements
     lex()
     while(tokenID == 'when'):
         lex()
@@ -443,46 +352,35 @@ def incase_stat():
     else:
         displayError('Error24: Expecting binded word "endincase", instead of '+ tokenID+'.\nTerminating program')
 
-def return_stat(): #statements
-    #if(token == 'return'):
+def return_stat(): 
     lex()
     expression()
-    #else:
-    #    displayError('Error31: Expecting binded word "return" .Terminating program')
-
-def print_stat(): #statements
-    #if(token == 'print'):
+    
+def print_stat(): 
     lex()
     expression()
-    #else:
-    #    displayError('Error32: Expecting binded word "print" .Terminating program')
 
-def input_stat(): #statements
-    #if(token == 'input'):
+def input_stat(): 
     lex()
     if(tokenID == IDTK):
         lex()
     else:
         displayError('Error25: Expecting input identifier, instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #    displayError('Error34: Expecting binded word "input" .Terminating program')
 
 def actualpars():
-    #if(tokenID == '('): e is permitted in idtail, look forward to predict
     lex()
     actualparlist()
     if(tokenID == ')'):
         lex()
     else:
         displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #    displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
-
+    
 def actualparlist():
-    actualparitem()
-    while(tokenID == ','):
-        lex()
+    if(not(tokenID == ')')):
         actualparitem()
+        while(tokenID == ','):
+            lex()
+            actualparitem()
 
 def actualparitem():
     if(tokenID == 'in'):
@@ -493,15 +391,15 @@ def actualparitem():
         if(tokenID == IDTK):
             lex()
         else:
-            displayError('Error11: Expecting variable\'s identifier after inout. Terminating program')
+            displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
     elif(tokenID == 'inandout'):
         lex()
         if(tokenID == IDTK):
             lex()
         else:
-            displayError('Error12: Expecting variable\'s identifier after inandout. Terminating program')
+            displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
     else:
-        displayError('Error13: Expecting parameter\'s type, instead of '+ tokenID+'.\nTerminating program')
+        displayError('Error13: Expecting actual parameter\'s type, instead of '+ tokenID+'.\nTerminating program')
 
 def relational_oper():
     if(tokenID == '='):
@@ -542,13 +440,10 @@ def optional_sign():
 def idtail():
     if(tokenID == '('):
         actualpars()
-    #no error, e is permitted
     
 def factor():
     if(tokenID == 'constant'):
         lex()
-    #else:
-    #    displayError('Error28: Expecting binded word "constant" .Terminating program')
     elif(tokenID == '('):
         lex()
         expression()
@@ -556,21 +451,15 @@ def factor():
             lex()
         else:
             displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #    displayError('Error49: Expecting "(" .Terminating program')
     elif(tokenID == IDTK):
-        #print('Found id')
         lex()
-        #print('Token', tokenID)
         idtail()
     else:
         displayError('Error28: Missing a constant, or a parenthesis or an identifier and nothing matches to what expecting as a factor.\nTerminating program')
 
 def term():
-    #print('Token', tokenID)
     factor()
     while(tokenID == '*' or tokenID == '/'):
-        #print('enter')
         mul_oper()
         factor()
 
@@ -593,8 +482,6 @@ def boolfactor():
                 displayError('Error26: Expecting "]", instead of '+ tokenID+'.\nTerminating program')
         else:
             displayError('Error27: Expecting "[", instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #    displayError('Error28: Expecting binded word "not", instead of '+ tokenID+'.\nTerminating program')
     elif(tokenID == '['):
         lex()
         condition()
@@ -602,10 +489,8 @@ def boolfactor():
             lex()
         else:
             displayError('Error26: Expecting "]", instead of '+ tokenID+'.\nTerminating program')
-    #else:
-    #    displayError('Error27: Expecting "[", instead of '+ tokenID+'.\nTerminating program')
     else:
-        expression() #what if the problem goes down to the expressions?
+        expression()
         relational_oper()
         expression()
 
@@ -619,7 +504,37 @@ def condition():
     boolterm()
     while(tokenID == 'or'):
         lex()
-        boolterm()
+        boolterm()   
+    
+def statement(): #look forward to predict next function
+    if(tokenID == IDTK): #assignment-statement, begin with variable
+        assignment_stat()
+    if(tokenID == 'if'):
+        if_stat()
+    if(tokenID == 'while'):
+        while_stat()
+    if(tokenID == 'dowhile'):
+        do_while_stat()
+    if(tokenID == 'loop'):
+        loop_stat()
+    if(tokenID == 'exit'):
+        exit_stat()
+    if(tokenID == 'forcase'):
+        forcase_stat()
+    if(tokenID == 'incase'):
+        incase_stat()
+    if(tokenID == 'return'):
+        return_stat()
+    if(tokenID == 'input'):
+        input_stat()
+    if(tokenID == 'print'):
+        print_stat()
+
+def statements():
+    statement()
+    while(tokenID == ';'):
+        lex()
+        statement()
         
 def formalparitem():
     if(tokenID == 'in'):
@@ -627,28 +542,28 @@ def formalparitem():
         if(tokenID == IDTK):
             lex()
         else:
-            displayError('Error10: Expecting variable\'s identifier after in. Terminating program')
+            displayError('Error10: Expecting variable\'s identifier after in, or there is a non accepted identifier. Terminating program')
     elif(tokenID == 'inout'):
         lex()
         if(tokenID == IDTK):
             lex()
         else:
-            displayError('Error11: Expecting variable\'s identifier after inout. Terminating program')
+            displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
     elif(tokenID == 'inandout'):
         lex()
         if(tokenID == IDTK):
             lex()
         else:
-            displayError('Error12: Expecting variable\'s identifier after inandout. Terminating program')
+            displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
     else:
         displayError('Error13: Expecting parameter\'s type, instead of '+ tokenID+'.\nTerminating program')
 
 def formalparlist():
-    formalparitem()
-    while(tokenID == ','):
-        lex()
+    if(not(tokenID == ')')):
         formalparitem()
-    #e is permitted - no error
+        while(tokenID == ','):
+            lex()
+            formalparitem()
 
 def formalpars():
     if(tokenID == '('):
@@ -657,16 +572,15 @@ def formalpars():
         if(tokenID == ')'):
             lex()
         else:
-            displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
+            displayError('Error8: Expecting ")", instead of '+ tokenID+' or ")" is missing.\nTerminating program')
     else:
-        displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
+        displayError('Error9: Expecting "(", instead of '+ tokenID+' or "(" is missing.\nTerminating program')
     
 def funcbody():
     formalpars()
     block()
 
 def subprogram():
-    #if(tokenID=='function'): #already checked in subprograms
     lex()
     if(tokenID==IDTK):
         lex()
@@ -674,11 +588,10 @@ def subprogram():
         if(tokenID == 'endfunction'):
             lex()
         else:
-            displayError('Error6: Expecting binded word "endfunction", instead of '+ tokenID+'\nTerminating program')
+            displayError('Error6: Expecting binded word "endfunction". \nTerminating program')
     else:
         displayError('Error7: Expecting function\'s identifier, instead of '+ tokenID+'\nTerminating program')
-    #else:
-    #    displayError('Error8: Expecting binded word "function", instead of '+ tokenID+'\nTerminating program')
+
 
 def subprograms():
     while(tokenID=='function'):
@@ -693,7 +606,6 @@ def varlist():
                 lex()
             else:
                 displayError('Error5: Expecting identifier after comma. Terminating program')
-    # else is not necessary, e is permitted
 
 def declarations():
     while(tokenID=='declare'):
@@ -702,10 +614,15 @@ def declarations():
         if(tokenID == ';'):
             lex()
         else:
-            displayError('Error4: Expecting ";", instead of '+ tokenID+'\nTerminating program')
+            displayError('Error4: Expecting ";", or "'+ tokenID+'" is not acceptable.\nTerminating program')
+
+def block():
+    declarations()
+    subprograms()
+    statements() 
 
 def program():
-    lex() #lexical analyzer - first rule, need to "fill" token
+    lex() #lexical analyzer - first rule, need to "fill" token & tokenID
     if(tokenID == 'program'):
         lex()
         if(tokenID == IDTK):
@@ -722,11 +639,10 @@ def program():
 
 
 #-----Main function-----#
-f = open('test1.stl', 'r')
+f = open('try1.stl', 'r')
 program()
-print(tokenID)
 if(not (endOfFile or tokenID=='EOF')):
-    print('Redundant characters after "endprogram". Please remove everything else except any comments')
+    print('Syntax error: Cannot recognize characters after "endprogram".')
 else:
-    print('Compilation ended successfully!');
+    print('EOF: Compilation ended successfully!');
 f.close()
