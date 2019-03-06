@@ -1,3 +1,6 @@
+#Foteini Karetsi, A.M. 2990, username: cse52990
+#Eleftheria Bella, A.M. 3039, username: cse53039
+
 import sys #needed to exit
 import string
 #-----Syntax analysis-----#
@@ -20,7 +23,6 @@ binded_words = ['program', 'endprogram', 'declare', 'if', 'then', 'else', 'endif
 #extras
 IDTK = 'id' #tokenID for identifiers
 endOfFile = False #True when reached EOF
-endProgram = False #True when recognize endprogram
 
 #-----Different states of Lex()-----# 
 #state0 - start
@@ -42,7 +44,7 @@ def displayError(msg): #Prints error message and terminates compiler
 
 #-----Lexical Analyzer-----# 
 def lex():
-    global tokenID, token, fline, f, buffer, counter, state, endOfFile, endProgram
+    global tokenID, token, fline, f, buffer, counter, state, endOfFile
     #initial values every time lex() begins
     counter = 0 
     state = 0
@@ -98,8 +100,6 @@ def lex():
                 tokenID = token
             else:
                 tokenID = 'id'
-            if(tokenID == 'endprogram'):
-                endProgram = True
             if(ch==''): #when reading endprogram
                 endOfFile = True
                 state = 100
@@ -131,11 +131,7 @@ def lex():
             state=0
             buffer.clear()
         elif(state==4 and ch==''):
-            if(not endProgram):
-                displayError('File ended without ending comments. Terminating program.')
-            else:
-                endOfFile = True
-                state = 100
+            displayError('File ended without ending comments. Terminating program.')
         elif(state==4 and ch=='/'):
             state=11   
         elif(state==5 and ch=='/'):
@@ -200,11 +196,7 @@ def lex():
         elif(state==11 and ch=='/'):
             displayError('Cannot accept nested single line comments. Terminating program.')
         elif(state==11 and ch==''):
-            if(not endProgram):
-                displayError('File ended without ending comments. Terminating program.')
-            else:
-                endOfFile = True
-                state = 100
+            displayError('File ended without ending comments. Terminating program.')
         elif(state==11 and ch=='\n'):
             fline +=1
             state=0
@@ -639,7 +631,7 @@ def program():
 
 
 #-----Main function-----#
-f = open('try1.stl', 'r')
+f = open('test.stl', 'r')
 program()
 if(not (endOfFile or tokenID=='EOF')):
     print('Syntax error: Cannot recognize characters after "endprogram".')
