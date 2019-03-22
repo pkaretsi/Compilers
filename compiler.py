@@ -43,7 +43,6 @@ def displayError(msg): #Prints error message and terminates compiler
     print('Error at line '+str(fline)+ '\n' +msg)
     sys.exit()
 
-
 #-----Intermediate code functions-----#
 #ATTENTION AT str and integer total_quads, temp_value!!!#
 quad_program_list = dict() #program's quadruples, dictionary where key=label, value=list of quadruple's operators
