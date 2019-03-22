@@ -24,6 +24,7 @@ binded_words = ['program', 'endprogram', 'declare', 'if', 'then', 'else', 'endif
 IDTK = 'id' #tokenID for identifiers
 endOfFile = False #True when reached EOF
 
+
 #-----Different states of Lex()-----# 
 #state0 - start
 #state1 - id
@@ -41,6 +42,46 @@ endOfFile = False #True when reached EOF
 def displayError(msg): #Prints error message and terminates compiler
     print('Error at line '+str(fline)+ '\n' +msg)
     sys.exit()
+
+
+#-----Intermediate code functions-----#
+#ATTENTION AT str and integer total_quads, temp_value!!!#
+quad_program_list = dict() #program's quadruples, dictionary where key=label, value=list of quadruple's operators
+total_quads = 0
+temp_value = 0
+
+def next_quad(): #returns the number of the next quadruple that will be produced 
+    return str(total_quads)
+
+def gen_quad(op=None, x='_', y='_', z='_'):
+    global total_quads, quad_program_list
+    label = str(total_quads)
+    total_quads +=1
+    quad_program_list['label'] = [op, x, y, z]
+    
+def newTemp():
+    global temp_value
+    tempvar = 'T_'+str(temp_value)
+    temp_value +=1
+    return tempvar
+
+def emptylist():
+    return list()
+
+def makelist(label):
+    nl = list()
+    nl.append(label)
+    return nl
+
+def merge(list1, list2):
+    return list1 + list2
+    
+def backpatch(qlist, zlabel):
+    global quad_program_list
+    for label in quad_program_list:
+        if label in qlist:
+            quad_program_list[label][3] = zlabel
+    
 
 #-----Lexical Analyzer-----# 
 def lex():
