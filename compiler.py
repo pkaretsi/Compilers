@@ -48,6 +48,7 @@ def displayError(msg): #Prints error message and terminates compiler
 quad_program_list = dict() #program's quadruples, dictionary where key=label, value=list of quadruple's operators
 total_quads = 0
 temp_value = 0
+programName = ""
 
 def next_quad(): #returns the number of the next quadruple that will be produced 
     return str(total_quads)
@@ -57,6 +58,7 @@ def gen_quad(op=None, x='_', y='_', z='_'):
     label = str(total_quads)
     total_quads +=1
     quad_program_list['label'] = [op, x, y, z]
+    print(quad_program_list['label'])
     
 def newTemp():
     global temp_value
@@ -246,10 +248,12 @@ def lex():
 
 #-----Definition of Starlet's grammar rules-----#
 def assignment_stat():
+    idName = token
     lex()
     if(tokenID == ':='):
         lex()
-        expression()
+        E = expression()
+        gen_quad(":=",E,"_",idName)
     else:
         displayError('Error14: Expecting assignment operator, instead of '+ tokenID+'.\nTerminating program')
 
@@ -386,54 +390,72 @@ def incase_stat():
 
 def return_stat(): 
     lex()
-    expression()
+    E = expression()
+    gen_quad("ret",E,"_","_")
     
 def print_stat(): 
     lex()
-    expression()
+    E = expression()
+    gen_quad("out",E,"_","_")
 
 def input_stat(): 
     lex()
+    idName = token
     if(tokenID == IDTK):
         lex()
+        gen_quad("inp",idName,"_","_")
     else:
         displayError('Error25: Expecting input identifier, instead of '+ tokenID+'.\nTerminating program')
 
 def actualpars():
+    actualpars_result = ""
     lex()
-    actualparlist()
+    actualpars_result = actualpars_result + actualparlist()
     if(tokenID == ')'):
+        actualpars_result = actualpars_result + token 
         lex()
     else:
         displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
+    return actualpars_result
     
 def actualparlist():
+    actualparlist_result = ""
     if(not(tokenID == ')')):
-        actualparitem()
+        actualparlist_result = actualparlist_result + actualparitem()
         while(tokenID == ','):
+            actualparlist_result = actualparlist_result + token
             lex()
-            actualparitem()
+            actualparlist_result = actualparlist_result + actualparitem()
+    return actualparlist_result
 
 def actualparitem():
+    actualparitem_result = ""
     if(tokenID == 'in'):
+        actualparitem_result = actualparitem_result + token 
         lex()
-        expression()
+        actualparitem_result = actualparitem_result + expression()
     elif(tokenID == 'inout'):
+        actualparitem_result = actualparitem_result + token 
         lex()
         if(tokenID == IDTK):
+            actualparitem_result = actualparitem_result + token 
             lex()
         else:
             displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
     elif(tokenID == 'inandout'):
+        actualparitem_result = actualparitem_result + token 
         lex()
         if(tokenID == IDTK):
+            actualparitem_result = actualparitem_result + token 
             lex()
         else:
             displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
     else:
         displayError('Error13: Expecting actual parameter\'s type, instead of '+ tokenID+'.\nTerminating program')
+    return actualparitem_result
 
 def relational_oper():
+    relop = token
     if(tokenID == '='):
         lex()
     elif(tokenID == '<='):
@@ -448,6 +470,7 @@ def relational_oper():
         lex()
     else:
         displayError('Error29: Expecting a relational operator, instead of '+ tokenID+'.\nTerminating program')
+    return relop
 
 def add_oper():
     if(tokenID == '+'):
@@ -470,45 +493,71 @@ def optional_sign():
         add_oper()
 
 def idtail():
+    idtail_result = ""
     if(tokenID == '('):
-        actualpars()
+        idtail_result = idtail_result + token
+        idtail_result = idtail_result + actualpars()
+    return idtail_result
     
 def factor():
+    factor_result = ""
     if(tokenID == 'constant'):
+        factor_result = token
         lex()
     elif(tokenID == '('):
         lex()
-        expression()
+        E = expression()
         if(tokenID == ')'):
+            factor_result = E
             lex()
         else:
             displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
     elif(tokenID == IDTK):
+        factor_result = factor_result + token
         lex()
         idtail()
     else:
         displayError('Error28: Missing a constant, or a parenthesis or an identifier and nothing matches to what expecting as a factor.\nTerminating program')
+    return factor_result
 
 def term():
-    factor()
+    #term_result = ""
+    F1_place = factor()
+    #term_result = term_result + F1_place
     while(tokenID == '*' or tokenID == '/'):
+        #term_result = term_result + token
+        operator = token 
         mul_oper()
-        factor()
+        F2_place = factor()
+        #term_result = term_result + F2_place
+        w = newTemp()
+        gen_quad(operator,F1_place,F2_place,w)
+        F1_place = w
+    return F1_place
+        
+    
 
 def expression():
     optional_sign()
-    term()
+    T1_place = term()
     while(tokenID == '+' or tokenID == '-'):
+        sign = tokenID
         add_oper()
-        term()
+        T2_place = term()
+        w = newTemp()
+        gen_quad(sign,T1_place,T2_place,w)
+        T1_place = w
+    return T1_place
 
 def boolfactor():
     if(tokenID == 'not'):
         lex()
         if(tokenID == '['):
             lex()
-            condition()
+            [Btrue , Bfalse] = condition()
             if(tokenID == ']'):
+                Rtrue = Bfalse
+                Rfalse = Btrue
                 lex()
             else:
                 displayError('Error26: Expecting "]", instead of '+ tokenID+'.\nTerminating program')
@@ -516,27 +565,47 @@ def boolfactor():
             displayError('Error27: Expecting "[", instead of '+ tokenID+'.\nTerminating program')
     elif(tokenID == '['):
         lex()
-        condition()
+        [Btrue , Bfalse] = condition()
         if(tokenID == ']'):
+            Rtrue = Btrue
+            Rfalse = Bfalse
             lex()
         else:
             displayError('Error26: Expecting "]", instead of '+ tokenID+'.\nTerminating program')
     else:
-        expression()
-        relational_oper()
-        expression()
+        E1 = expression()
+        relop = relational_oper()
+        E2 = expression()
+        Rtrue = makelist(next_quad())
+        gen_quad(relop,E1,E2,"_")
+        Rfalse = makelist(next_quad())
+        gen_quad("jump","_","_","_")
+    return [Rtrue , Rfalse]
 
 def boolterm():
-    boolfactor()
+    [R1true , R1false] = boolfactor()
+    Qtrue = R1true
+    Qfalse = R1false
     while(tokenID == 'and'):
+        backpatch(Qtrue , next_quad())
         lex()
-        boolfactor()
+        [R2true , R2false] = boolfactor()
+        Qfalse = merge(Qfalse , R2false)
+        Qtrue = R2true
+    return [Qtrue , Qfalse]
+        
 
 def condition():
-    boolterm()
+    [Q1true , Q1false] = boolterm()
+    Btrue = Q1true
+    Bfalse = Q1false
     while(tokenID == 'or'):
+        backpatch(Bfalse , next_quad())
         lex()
-        boolterm()   
+        [Q2true , Q2false] = boolterm()
+        Btrue = merge(Btrue , Q2true)
+        Bfalse = Q2false
+    return [Btrue , Bfalse]
     
 def statement(): #look forward to predict next function
     if(tokenID == IDTK): #assignment-statement, begin with variable
@@ -608,15 +677,16 @@ def formalpars():
     else:
         displayError('Error9: Expecting "(", instead of '+ tokenID+' or "(" is missing.\nTerminating program')
     
-def funcbody():
+def funcbody(name):
     formalpars()
-    block()
+    block(name)
 
 def subprogram():
     lex()
     if(tokenID==IDTK):
+        funcName = token
         lex()
-        funcbody()
+        funcbody(funcName)
         if(tokenID == 'endfunction'):
             lex()
         else:
@@ -648,18 +718,24 @@ def declarations():
         else:
             displayError('Error4: Expecting ";", or "'+ tokenID+'" is not acceptable.\nTerminating program')
 
-def block():
+def block(name):
     declarations()
     subprograms()
-    statements() 
+    gen_quad("begin_block",name,"_","_")
+    statements()
+    if(name == programName):
+        gen_quad("halt","_","_","_")
+    gen_quad("end_block",name,"_","_")
 
 def program():
     lex() #lexical analyzer - first rule, need to "fill" token & tokenID
     if(tokenID == 'program'):
         lex()
         if(tokenID == IDTK):
+            global programName
+            programName = token
             lex()
-            block()
+            block(programName)
             if(tokenID == 'endprogram'):
                 lex() #expecting eof, or check for sth else
             else:
