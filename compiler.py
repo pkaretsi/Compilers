@@ -52,8 +52,8 @@ temp_value = 0
 def next_quad(): #returns the number of the next quadruple that will be produced 
     return str(total_quads)
 
-def gen_quad(op=None, x='_', y='_', z='_'):
-    global total_quads, quad_program_list
+def gen_quad(op=None, x='_', y='_', z='_'): #program's list described as a dictionary where label is the key and the quadruple is the value
+    global total_quads, quad_program_list #error getting quadruples in right order when using dict :(
     label = str(total_quads)
     total_quads +=1
     quad_program_list['label'] = [op, x, y, z]
@@ -658,7 +658,9 @@ def program():
     if(tokenID == 'program'):
         lex()
         if(tokenID == IDTK):
+            print("TokenID "+tokenID)
             lex()
+            print("TokenID 2 "+tokenID)
             block()
             if(tokenID == 'endprogram'):
                 lex() #expecting eof, or check for sth else
