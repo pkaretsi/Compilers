@@ -54,12 +54,12 @@ def next_quad(): #returns the number of the next quadruple that will be produced
     return str(total_quads)
 
 def gen_quad(op=None, x='_', y='_', z='_'):
-    global total_quads, quad_program_list
-    label = str(total_quads)
+    global total_quads
+    #label = str(total_quads) #considers label as same key, so it only updates the list :(
+    quad_program_list[total_quads] = [op, x, y, z] #key is an integer, later maybe should be used as string
+    print(quad_program_list[total_quads])
     total_quads +=1
-    quad_program_list['label'] = [op, x, y, z]
-    print(quad_program_list['label'])
-    
+        
 def newTemp():
     global temp_value
     tempvar = 'T_'+str(temp_value)
@@ -246,7 +246,144 @@ def lex():
             state=4
     #print(token)    
 
-#-----Definition of Starlet's grammar rules-----#
+#-----Definition of Starlet's grammar rules-----#   
+def program():
+    lex() #lexical analyzer - first rule, need to "fill" token & tokenID
+    if(tokenID == 'program'):
+        lex()
+        if(tokenID == IDTK):
+            global programName
+            programName = token
+            lex()
+            block(programName)
+            if(tokenID == 'endprogram'):
+                lex() #expecting eof, or check for sth else
+            else:
+                displayError('Error1: Expecting binded word "endprogram", instead of '+ tokenID+'\nTerminating program')
+        else:
+            displayError('Error2: Expecting program\'s identifier, instead of "'+ tokenID+'"\nTerminating program')
+    else:
+        displayError('Error3: Expecting binded word "program", instead of "'+ tokenID+'"\nTerminating program')
+
+def block(name):
+    declarations()
+    subprograms()
+    gen_quad('begin_block',name)
+    statements()
+    if(name == programName):
+        gen_quad('halt')
+    gen_quad('end_block',name)
+
+def declarations():
+    while(tokenID=='declare'):
+        lex()
+        varlist()
+        if(tokenID == ';'):
+            lex()
+        else:
+            displayError('Error4: Expecting ";", or "'+ tokenID+'" is not acceptable.\nTerminating program')
+
+def varlist():
+    if(tokenID == IDTK):
+        lex()
+        while(tokenID == ','):
+            lex()
+            if(tokenID == IDTK):
+                lex()
+            else:
+                displayError('Error5: Expecting identifier after comma. Terminating program')
+
+def subprograms():
+    while(tokenID=='function'):
+        subprogram()
+
+def subprogram():
+    lex()
+    if(tokenID==IDTK):
+        funcName = token
+        lex()
+        funcbody(funcName)
+        if(tokenID == 'endfunction'):
+            lex()
+        else:
+            displayError('Error6: Expecting binded word "endfunction". \nTerminating program')
+    else:
+        displayError('Error7: Expecting function\'s identifier, instead of '+ tokenID+'\nTerminating program')
+
+def funcbody(name):
+    formalpars()
+    block(name)
+
+def formalpars():
+    if(tokenID == '('):
+        lex()
+        formalparlist()
+        if(tokenID == ')'):
+            lex()
+        else:
+            displayError('Error8: Expecting ")", instead of '+ tokenID+' or ")" is missing.\nTerminating program')
+    else:
+        displayError('Error9: Expecting "(", instead of '+ tokenID+' or "(" is missing.\nTerminating program')
+
+def formalparlist():
+    if(not(tokenID == ')')):
+        formalparitem()
+        while(tokenID == ','):
+            lex()
+            formalparitem()
+
+def formalparitem():
+    if(tokenID == 'in'):
+        lex()
+        if(tokenID == IDTK):
+            lex()
+        else:
+            displayError('Error10: Expecting variable\'s identifier after in, or there is a non accepted identifier. Terminating program')
+    elif(tokenID == 'inout'):
+        lex()
+        if(tokenID == IDTK):
+            lex()
+        else:
+            displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
+    elif(tokenID == 'inandout'):
+        lex()
+        if(tokenID == IDTK):
+            lex()
+        else:
+            displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
+    else:
+        displayError('Error13: Expecting parameter\'s type, instead of '+ tokenID+'.\nTerminating program')
+
+def statements():
+    statement()
+    while(tokenID == ';'):
+        lex()
+        statement()
+
+def statement(): #look forward to predict next function
+    if(tokenID == IDTK): #assignment-statement, begin with variable
+        assignment_stat()
+    if(tokenID == 'if'):
+        if_stat()
+    if(tokenID == 'while'):
+        while_stat()
+    if(tokenID == 'dowhile'):
+        do_while_stat()
+    if(tokenID == 'loop'):
+        loop_stat()
+    if(tokenID == 'exit'):
+        exit_stat()
+    if(tokenID == 'forcase'):
+        forcase_stat()
+    if(tokenID == 'incase'):
+        incase_stat()
+    if(tokenID == 'return'):
+        return_stat()
+    if(tokenID == 'input'):
+        input_stat()
+    if(tokenID == 'print'):
+        print_stat()
+
 def assignment_stat():
     idName = token
     lex()
@@ -391,68 +528,174 @@ def incase_stat():
 def return_stat(): 
     lex()
     E = expression()
-    gen_quad("ret",E,"_","_")
+    gen_quad('ret',E)
     
 def print_stat(): 
     lex()
     E = expression()
-    gen_quad("out",E,"_","_")
+    gen_quad('out',E)
 
 def input_stat(): 
     lex()
     idName = token
     if(tokenID == IDTK):
         lex()
-        gen_quad("inp",idName,"_","_")
+        gen_quad('inp',idName)
     else:
         displayError('Error25: Expecting input identifier, instead of '+ tokenID+'.\nTerminating program')
 
 def actualpars():
-    actualpars_result = ""
     lex()
-    actualpars_result = actualpars_result + actualparlist()
+    actualparlist()
     if(tokenID == ')'):
-        actualpars_result = actualpars_result + token 
         lex()
     else:
         displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
-    return actualpars_result
     
 def actualparlist():
-    actualparlist_result = ""
     if(not(tokenID == ')')):
-        actualparlist_result = actualparlist_result + actualparitem()
+        actualparitem()
         while(tokenID == ','):
-            actualparlist_result = actualparlist_result + token
             lex()
-            actualparlist_result = actualparlist_result + actualparitem()
-    return actualparlist_result
+            actualparitem()
 
 def actualparitem():
-    actualparitem_result = ""
-    if(tokenID == 'in'):
-        actualparitem_result = actualparitem_result + token 
+    if(tokenID == 'in'):  
         lex()
-        actualparitem_result = actualparitem_result + expression()
-    elif(tokenID == 'inout'):
-        actualparitem_result = actualparitem_result + token 
+        actualparitem_result = expression()
+        gen_quad('par', actualparitem_result, 'CV') #create quadruples here when having parameters
+    elif(tokenID == 'inout'): 
         lex()
         if(tokenID == IDTK):
-            actualparitem_result = actualparitem_result + token 
+            actualparitem_result =token 
             lex()
+            gen_quad('par', actualparitem_result, 'REF')
         else:
             displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
     elif(tokenID == 'inandout'):
-        actualparitem_result = actualparitem_result + token 
         lex()
         if(tokenID == IDTK):
-            actualparitem_result = actualparitem_result + token 
+            actualparitem_result = token 
             lex()
+            gen_quad('par', actualparitem_result, 'CP')
         else:
             displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
     else:
         displayError('Error13: Expecting actual parameter\'s type, instead of '+ tokenID+'.\nTerminating program')
-    return actualparitem_result
+
+def condition():
+    [Q1true, Q1false] = boolterm()
+    Btrue = Q1true
+    Bfalse = Q1false
+    while(tokenID == 'or'):
+        backpatch(Bfalse, next_quad())
+        lex()
+        [Q2true, Q2false] = boolterm()
+        Btrue = merge(Btrue, Q2true)
+        Bfalse = Q2false
+    return [Btrue, Bfalse]
+
+def boolterm():
+    [R1true, R1false] = boolfactor()
+    Qtrue = R1true
+    Qfalse = R1false
+    while(tokenID == 'and'):
+        backpatch(Qtrue, next_quad())
+        lex()
+        [R2true, R2false] = boolfactor()
+        Qfalse = merge(Qfalse, R2false)
+        Qtrue = R2true
+    return [Qtrue, Qfalse]
+
+def boolfactor():
+    if(tokenID == 'not'):
+        lex()
+        if(tokenID == '['):
+            lex()
+            [Btrue, Bfalse] = condition()
+            if(tokenID == ']'):
+                Rtrue = Bfalse
+                Rfalse = Btrue
+                lex()
+            else:
+                displayError('Error26: Expecting "]", instead of '+ tokenID+'.\nTerminating program')
+        else:
+            displayError('Error27: Expecting "[", instead of '+ tokenID+'.\nTerminating program')
+    elif(tokenID == '['):
+        lex()
+        [Btrue, Bfalse] = condition()
+        if(tokenID == ']'):
+            Rtrue = Btrue
+            Rfalse = Bfalse
+            lex()
+        else:
+            displayError('Error26: Expecting "]", instead of '+ tokenID+'.\nTerminating program')
+    else:
+        E1 = expression()
+        relop = relational_oper()
+        E2 = expression()
+        Rtrue = makelist(next_quad())
+        gen_quad(relop,E1,E2,"_")
+        Rfalse = makelist(next_quad())
+        gen_quad('jump')
+    return [Rtrue, Rfalse]
+
+def expression():
+    optional_sign()
+    T1_place = term()
+    while(tokenID == '+' or tokenID == '-'):
+        sign = token
+        add_oper()
+        T2_place = term()
+        w = newTemp()
+        gen_quad(sign,T1_place,T2_place,w)
+        T1_place = w
+    return T1_place
+
+def term():
+    F1_place = factor()
+    while(tokenID == '*' or tokenID == '/'):
+        operator = token 
+        mul_oper()
+        F2_place = factor()
+        w = newTemp()
+        gen_quad(operator,F1_place,F2_place,w)
+        F1_place = w
+    return F1_place
+
+def factor():
+    factor_result = ''
+    if(tokenID == 'constant'):
+        factor_result = token
+        lex()
+    elif(tokenID == '('):
+        lex()
+        E = expression()
+        if(tokenID == ')'):
+            factor_result = E
+            lex()
+        else:
+            displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
+    elif(tokenID == IDTK):
+        ########## if id without parameters it is a variable, pass it to next level
+        factor_result = token
+        lex()
+        idtail_result = idtail()
+        if(idtail_result !=''):
+            retValue = newTemp()
+            gen_quad('par', retValue, 'RET')
+            gen_quad('call', factor_result)
+            gen_quad(':=', retValue, '_', factor_result)
+    else:
+        displayError('Error28: Missing a constant, or a parenthesis or an identifier and nothing matches to what expecting as a factor.\nTerminating program')
+    return factor_result
+
+def idtail():
+    idtail_result = ''
+    if(tokenID == '('):
+        actualpars()
+        idtail_result = 'arguments'
+    return idtail_result
 
 def relational_oper():
     relop = token
@@ -491,259 +734,6 @@ def mul_oper():
 def optional_sign():
     if(tokenID == '+' or tokenID=='-'):
         add_oper()
-
-def idtail():
-    idtail_result = ""
-    if(tokenID == '('):
-        idtail_result = idtail_result + token
-        idtail_result = idtail_result + actualpars()
-    return idtail_result
-    
-def factor():
-    factor_result = ""
-    if(tokenID == 'constant'):
-        factor_result = token
-        lex()
-    elif(tokenID == '('):
-        lex()
-        E = expression()
-        if(tokenID == ')'):
-            factor_result = E
-            lex()
-        else:
-            displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
-    elif(tokenID == IDTK):
-        factor_result = factor_result + token
-        lex()
-        idtail()
-    else:
-        displayError('Error28: Missing a constant, or a parenthesis or an identifier and nothing matches to what expecting as a factor.\nTerminating program')
-    return factor_result
-
-def term():
-    #term_result = ""
-    F1_place = factor()
-    #term_result = term_result + F1_place
-    while(tokenID == '*' or tokenID == '/'):
-        #term_result = term_result + token
-        operator = token 
-        mul_oper()
-        F2_place = factor()
-        #term_result = term_result + F2_place
-        w = newTemp()
-        gen_quad(operator,F1_place,F2_place,w)
-        F1_place = w
-    return F1_place
-        
-    
-
-def expression():
-    optional_sign()
-    T1_place = term()
-    while(tokenID == '+' or tokenID == '-'):
-        sign = tokenID
-        add_oper()
-        T2_place = term()
-        w = newTemp()
-        gen_quad(sign,T1_place,T2_place,w)
-        T1_place = w
-    return T1_place
-
-def boolfactor():
-    if(tokenID == 'not'):
-        lex()
-        if(tokenID == '['):
-            lex()
-            [Btrue , Bfalse] = condition()
-            if(tokenID == ']'):
-                Rtrue = Bfalse
-                Rfalse = Btrue
-                lex()
-            else:
-                displayError('Error26: Expecting "]", instead of '+ tokenID+'.\nTerminating program')
-        else:
-            displayError('Error27: Expecting "[", instead of '+ tokenID+'.\nTerminating program')
-    elif(tokenID == '['):
-        lex()
-        [Btrue , Bfalse] = condition()
-        if(tokenID == ']'):
-            Rtrue = Btrue
-            Rfalse = Bfalse
-            lex()
-        else:
-            displayError('Error26: Expecting "]", instead of '+ tokenID+'.\nTerminating program')
-    else:
-        E1 = expression()
-        relop = relational_oper()
-        E2 = expression()
-        Rtrue = makelist(next_quad())
-        gen_quad(relop,E1,E2,"_")
-        Rfalse = makelist(next_quad())
-        gen_quad("jump","_","_","_")
-    return [Rtrue , Rfalse]
-
-def boolterm():
-    [R1true , R1false] = boolfactor()
-    Qtrue = R1true
-    Qfalse = R1false
-    while(tokenID == 'and'):
-        backpatch(Qtrue , next_quad())
-        lex()
-        [R2true , R2false] = boolfactor()
-        Qfalse = merge(Qfalse , R2false)
-        Qtrue = R2true
-    return [Qtrue , Qfalse]
-        
-
-def condition():
-    [Q1true , Q1false] = boolterm()
-    Btrue = Q1true
-    Bfalse = Q1false
-    while(tokenID == 'or'):
-        backpatch(Bfalse , next_quad())
-        lex()
-        [Q2true , Q2false] = boolterm()
-        Btrue = merge(Btrue , Q2true)
-        Bfalse = Q2false
-    return [Btrue , Bfalse]
-    
-def statement(): #look forward to predict next function
-    if(tokenID == IDTK): #assignment-statement, begin with variable
-        assignment_stat()
-    if(tokenID == 'if'):
-        if_stat()
-    if(tokenID == 'while'):
-        while_stat()
-    if(tokenID == 'dowhile'):
-        do_while_stat()
-    if(tokenID == 'loop'):
-        loop_stat()
-    if(tokenID == 'exit'):
-        exit_stat()
-    if(tokenID == 'forcase'):
-        forcase_stat()
-    if(tokenID == 'incase'):
-        incase_stat()
-    if(tokenID == 'return'):
-        return_stat()
-    if(tokenID == 'input'):
-        input_stat()
-    if(tokenID == 'print'):
-        print_stat()
-
-def statements():
-    statement()
-    while(tokenID == ';'):
-        lex()
-        statement()
-        
-def formalparitem():
-    if(tokenID == 'in'):
-        lex()
-        if(tokenID == IDTK):
-            lex()
-        else:
-            displayError('Error10: Expecting variable\'s identifier after in, or there is a non accepted identifier. Terminating program')
-    elif(tokenID == 'inout'):
-        lex()
-        if(tokenID == IDTK):
-            lex()
-        else:
-            displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
-    elif(tokenID == 'inandout'):
-        lex()
-        if(tokenID == IDTK):
-            lex()
-        else:
-            displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
-    else:
-        displayError('Error13: Expecting parameter\'s type, instead of '+ tokenID+'.\nTerminating program')
-
-def formalparlist():
-    if(not(tokenID == ')')):
-        formalparitem()
-        while(tokenID == ','):
-            lex()
-            formalparitem()
-
-def formalpars():
-    if(tokenID == '('):
-        lex()
-        formalparlist()
-        if(tokenID == ')'):
-            lex()
-        else:
-            displayError('Error8: Expecting ")", instead of '+ tokenID+' or ")" is missing.\nTerminating program')
-    else:
-        displayError('Error9: Expecting "(", instead of '+ tokenID+' or "(" is missing.\nTerminating program')
-    
-def funcbody(name):
-    formalpars()
-    block(name)
-
-def subprogram():
-    lex()
-    if(tokenID==IDTK):
-        funcName = token
-        lex()
-        funcbody(funcName)
-        if(tokenID == 'endfunction'):
-            lex()
-        else:
-            displayError('Error6: Expecting binded word "endfunction". \nTerminating program')
-    else:
-        displayError('Error7: Expecting function\'s identifier, instead of '+ tokenID+'\nTerminating program')
-
-
-def subprograms():
-    while(tokenID=='function'):
-        subprogram()
-
-def varlist():
-    if(tokenID == IDTK):
-        lex()
-        while(tokenID == ','):
-            lex()
-            if(tokenID == IDTK):
-                lex()
-            else:
-                displayError('Error5: Expecting identifier after comma. Terminating program')
-
-def declarations():
-    while(tokenID=='declare'):
-        lex()
-        varlist()
-        if(tokenID == ';'):
-            lex()
-        else:
-            displayError('Error4: Expecting ";", or "'+ tokenID+'" is not acceptable.\nTerminating program')
-
-def block(name):
-    declarations()
-    subprograms()
-    gen_quad("begin_block",name,"_","_")
-    statements()
-    if(name == programName):
-        gen_quad("halt","_","_","_")
-    gen_quad("end_block",name,"_","_")
-
-def program():
-    lex() #lexical analyzer - first rule, need to "fill" token & tokenID
-    if(tokenID == 'program'):
-        lex()
-        if(tokenID == IDTK):
-            global programName
-            programName = token
-            lex()
-            block(programName)
-            if(tokenID == 'endprogram'):
-                lex() #expecting eof, or check for sth else
-            else:
-                displayError('Error1: Expecting binded word "endprogram", instead of '+ tokenID+'\nTerminating program')
-        else:
-            displayError('Error2: Expecting program\'s identifier, instead of "'+ tokenID+'"\nTerminating program')
-    else:
-        displayError('Error3: Expecting binded word "program", instead of "'+ tokenID+'"\nTerminating program')
 
 
 #-----Main function-----#
