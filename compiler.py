@@ -58,7 +58,7 @@ def gen_quad(op=None, x='_', y='_', z='_'):
     global total_quads
     #label = str(total_quads) #considers label as same key, so it only updates the list :(
     quad_program_list[total_quads] = [op, x, y, z] #key is an integer, later maybe should be used as string
-    print(str(total_quads), quad_program_list[total_quads])
+    #print(str(total_quads), quad_program_list[total_quads])
     #print(quad_program_list[total_quads])
     total_quads +=1
         
@@ -82,7 +82,8 @@ def merge(list1, list2):
 def backpatch(qlist, zlabel):
     global quad_program_list
     for label in quad_program_list:
-        if label in qlist:
+        if str(label) in qlist:
+            print(label)
             quad_program_list[label][3] = zlabel
     
 
@@ -400,18 +401,18 @@ def if_stat():
     lex()
     if(tokenID == '('):
         lex()
-        [cond_true,cond_false] = condition()
+        [cond_true, cond_false] = condition()
         if(tokenID == ')'):
             lex()
             if(tokenID == 'then'):
                 lex()
-                backpatch(cond_true , next_quad())
+                backpatch(cond_true, next_quad())
                 statements()
-                ifList = make_list(next_quad)
-                gen_quad("jump" , "_" , "_" , "_")
-                backpatch(cond_false , next_quad())
+                ifList = makelist(next_quad)
+                gen_quad("jump")
+                backpatch(cond_false, next_quad())
                 elsepart()
-                backpatch(ifList , next_quad())
+                backpatch(ifList, next_quad())
                 if(tokenID == 'endif'):
                     lex()
                 else:
@@ -457,14 +458,14 @@ def do_while_stat():
         lex()
         if(tokenID == '('):
             lex()
-            [cond_true = cond_false] = condition()
+            [cond_true, cond_false] = condition()
             if(tokenID == ')'):
                 lex()
+                backpatch(cond_false, do_while_quad)
+                backpatch(cond_true, next_quad())
             else:
                 displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
         else:
-            backpatch(cond_false , do_while_quad)
-            backpatch(cond_true , next_quad())
             displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
     else:
         displayError('Error18: Expecting binded word "enddowhile", instead of '+ tokenID+'.\nTerminating program')
@@ -486,22 +487,38 @@ def exit_stat():
 
 def forcase_stat():
     lex()
-    forCaseQuad = next_quad()
+    #-----p1-----#
+    forcase_quad = next_quad()
+    inWhenList = emptylist()
+    #------------#
+    #forCaseQuad = next_quad()
     while(tokenID == 'when'):
         lex()
         if(tokenID == '('):
             lex()
-            [cond_true , cond_false] = condition()
-            backpatch(cond_true , next_quad())
+            [cond_true, cond_false] = condition()
+            #backpatch(cond_true, next_quad())
             ##cond_true = makelist(next_quad())
-            cond_false = makelist(next_quad())
+            #cond_false = makelist(next_quad())
             if(tokenID == ')'):
                 lex()
                 if(tokenID == ':'):
+                    #-----p2-----#
+                    nextlist = makelist(next_quad())
+                    backpatch(cond_false, next_quad())
+                    gen_quad('jump')
+                    backpatch(cond_true, next_quad())
+                    #------------#
                     lex()
                     statements()
-                    forCaseList = make_list(next_quad)
-                    gen_quad("jump" , "_" , "_" , "_")
+                    #-----p3-----#
+                    forcaseList = makelist(next_quad())
+                    gen_quad('jump')
+                    backpatch(nextlist, next_quad())
+                    merge(inWhenList, nextlist)
+                    #------------#
+                    #forCaseList = makelist(next_quad)
+                    #gen_quad("jump" , "_" , "_" , "_")
                 else:
                     displayError('Error20: Expecting ":", instead of '+ tokenID+'.\nTerminating program')
             else:
@@ -512,11 +529,19 @@ def forcase_stat():
         lex()
         if(tokenID == ':'):
             lex()
+            if(inWhenList!=[]):
+                #-----p5-----#
+                backpatch(forcaseList, next_quad())
+                gen_quad('jump', '_', '_', next_quad())
+                #------------#
             statements()
-            gen_quad("jump" , "_" , "_" , "_" , "_")
+            #-----p4-----#
+            gen_quad('jump', '_', '_', forcase_quad)
+            #------------#
+            #gen_quad("jump" , "_" , "_" , "_")
             if(tokenID == 'enddefault'):
                 lex()
-                backpatch(forCaseList , next_quad())
+                #backpatch(forCaseList , next_quad())
                 if(tokenID == 'endforcase'):
                     lex()
                 else:
@@ -770,3 +795,5 @@ if(not (endOfFile or tokenID=='EOF')):
 else:
     print('EOF: Compilation ended successfully!');
 f.close()
+for l in quad_program_list:
+    print(str(l), quad_program_list[l])
