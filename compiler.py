@@ -446,19 +446,15 @@ def while_stat():
 
 def do_while_stat():
     lex()
-    #doWhileStart = next_quad()
     statements()
     if(tokenID == 'enddowhile'):
         lex()
         if(tokenID == '('):
             lex()
-            #[Ctrue, Cfalse] = condition()
             if(tokenID == ')'):
                 lex()
             else:
                 displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
-            #backpatch(Cfalse,doWhileStart)
-            #backpatch(Ctrue, next_quad())
         else:
             displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
     else:
