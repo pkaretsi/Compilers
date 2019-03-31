@@ -398,13 +398,18 @@ def if_stat():
     lex()
     if(tokenID == '('):
         lex()
-        condition()
+        [cond_true,cond_false] = condition()
         if(tokenID == ')'):
             lex()
             if(tokenID == 'then'):
                 lex()
+                backpatch(cond_true , next_quad())
                 statements()
+                ifList = make_list(next_quad)
+                gen_quad("jump" , "_" , "_" , "_")
+                backpatch(cond_false , next_quad())
                 elsepart()
+                backpatch(ifList , next_quad())
                 if(tokenID == 'endif'):
                     lex()
                 else:
@@ -440,17 +445,20 @@ def while_stat():
 
 def do_while_stat():
     lex()
+    do_while_quad = next_quad()
     statements()
     if(tokenID == 'enddowhile'):
         lex()
         if(tokenID == '('):
             lex()
-            condition()
+            [cond_true = cond_false] = condition()
             if(tokenID == ')'):
                 lex()
             else:
                 displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
         else:
+            backpatch(cond_false , do_while_quad)
+            backpatch(cond_true , next_quad())
             displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
     else:
         displayError('Error18: Expecting binded word "enddowhile", instead of '+ tokenID+'.\nTerminating program')
@@ -468,16 +476,22 @@ def exit_stat():
 
 def forcase_stat():
     lex()
+    forCaseQuad = next_quad()
     while(tokenID == 'when'):
         lex()
         if(tokenID == '('):
             lex()
-            condition()
+            [cond_true , cond_false] = condition()
+            backpatch(cond_true , next_quad())
+            ##cond_true = makelist(next_quad())
+            cond_false = makelist(next_quad())
             if(tokenID == ')'):
                 lex()
                 if(tokenID == ':'):
                     lex()
                     statements()
+                    forCaseList = make_list(next_quad)
+                    gen_quad("jump" , "_" , "_" , "_")
                 else:
                     displayError('Error20: Expecting ":", instead of '+ tokenID+'.\nTerminating program')
             else:
@@ -489,8 +503,10 @@ def forcase_stat():
         if(tokenID == ':'):
             lex()
             statements()
+            gen_quad("jump" , "_" , "_" , "_" , "_")
             if(tokenID == 'enddefault'):
                 lex()
+                backpatch(forCaseList , next_quad())
                 if(tokenID == 'endforcase'):
                     lex()
                 else:
@@ -528,7 +544,7 @@ def incase_stat():
 def return_stat(): 
     lex()
     E = expression()
-    gen_quad('ret',E)
+    gen_quad('retv',E)
     
 def print_stat(): 
     lex()
