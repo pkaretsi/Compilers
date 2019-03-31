@@ -515,7 +515,7 @@ def forcase_stat():
                     forcaseList = makelist(next_quad())
                     gen_quad('jump')
                     backpatch(nextlist, next_quad())
-                    merge(inWhenList, nextlist)
+                    inWhenList = merge(inWhenList, forcaseList)
                     #------------#
                     #forCaseList = makelist(next_quad)
                     #gen_quad("jump" , "_" , "_" , "_")
@@ -529,14 +529,19 @@ def forcase_stat():
         lex()
         if(tokenID == ':'):
             lex()
-            if(inWhenList!=[]):
+            '''if(inWhenList!=[]):
                 #-----p5-----#
+                print("nooo!")
                 backpatch(forcaseList, next_quad())
                 gen_quad('jump', '_', '_', next_quad())
-                #------------#
+                #------------#'''
             statements()
             #-----p4-----#
             gen_quad('jump', '_', '_', forcase_quad)
+            backpatch(inWhenList, next_quad())
+            outlist = makelist(next_quad())
+            gen_quad('jump', '_', '_')
+            backpatch(outlist, next_quad())
             #------------#
             #gen_quad("jump" , "_" , "_" , "_")
             if(tokenID == 'enddefault'):
@@ -795,5 +800,12 @@ if(not (endOfFile or tokenID=='EOF')):
 else:
     print('EOF: Compilation ended successfully!');
 f.close()
+interFile = open('comp.int', 'w')
 for l in quad_program_list:
     print(str(l), quad_program_list[l])
+    #interFile.write(strl(l), quad_program_list[l])
+interFile.write(str(quad_program_list))
+interFile.close()
+
+
+    
