@@ -49,6 +49,7 @@ quad_program_list = dict() #program's quadruples, dictionary where key=label, va
 total_quads = 0
 temp_value = 0
 programName = ""
+exit_list = list()
 
 def next_quad(): #returns the number of the next quadruple that will be produced 
     return str(total_quads)
@@ -57,7 +58,8 @@ def gen_quad(op=None, x='_', y='_', z='_'):
     global total_quads
     #label = str(total_quads) #considers label as same key, so it only updates the list :(
     quad_program_list[total_quads] = [op, x, y, z] #key is an integer, later maybe should be used as string
-    print(quad_program_list[total_quads])
+    print(str(total_quads), quad_program_list[total_quads])
+    #print(quad_program_list[total_quads])
     total_quads +=1
         
 def newTemp():
@@ -423,12 +425,16 @@ def elsepart():
 
 def while_stat():
     lex()
+    while_quad = next_quad()
     if(tokenID == '('):
         lex()
-        condition()
+        [condTrue, condFalse] = condition()
         if(tokenID == ')'):
             lex()
+            backpatch(condTrue, next_quad())
             statements()
+            gen_quad('jump', '_', '_', while_quad)
+            backpatch(condFalse, next_quad())
             if(tokenID == 'endwhile'):
                 lex()
             else:
@@ -440,16 +446,19 @@ def while_stat():
 
 def do_while_stat():
     lex()
+    #doWhileStart = next_quad()
     statements()
     if(tokenID == 'enddowhile'):
         lex()
         if(tokenID == '('):
             lex()
-            condition()
+            #[Ctrue, Cfalse] = condition()
             if(tokenID == ')'):
                 lex()
             else:
                 displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
+            #backpatch(Cfalse,doWhileStart)
+            #backpatch(Ctrue, next_quad())
         else:
             displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
     else:
@@ -458,13 +467,17 @@ def do_while_stat():
 def loop_stat():
     lex()
     statements()
+    backpatch(exit_list, next_quad())
     if(tokenID == 'endloop'):
         lex()
     else:
         displayError('Error19: Expecting binded word "endloop", instead of '+ tokenID+'.\nTerminating program')
 
 def exit_stat():
+    global exit_list
     lex()
+    exit_list = makelist(next_quad())
+    gen_quad('jump')
 
 def forcase_stat():
     lex()
@@ -528,7 +541,7 @@ def incase_stat():
 def return_stat(): 
     lex()
     E = expression()
-    gen_quad('ret',E)
+    gen_quad('retv',E)
     
 def print_stat(): 
     lex()
@@ -635,7 +648,7 @@ def boolfactor():
         relop = relational_oper()
         E2 = expression()
         Rtrue = makelist(next_quad())
-        gen_quad(relop,E1,E2,"_")
+        gen_quad(relop,E1,E2,'_')
         Rfalse = makelist(next_quad())
         gen_quad('jump')
     return [Rtrue, Rfalse]
