@@ -504,9 +504,9 @@ def forcase_stat():
                 lex()
                 if(tokenID == ':'):
                     #-----p2-----#
-                    nextlist = makelist(next_quad())
-                    backpatch(cond_false, next_quad())
-                    gen_quad('jump')
+                    #nextlist = makelist(next_quad()) ##redundant code
+                    #backpatch(cond_false, next_quad())
+                    #gen_quad('jump')
                     backpatch(cond_true, next_quad())
                     #------------#
                     lex()
@@ -514,7 +514,8 @@ def forcase_stat():
                     #-----p3-----#
                     forcaseList = makelist(next_quad())
                     gen_quad('jump')
-                    backpatch(nextlist, next_quad())
+                    #backpatch(nextlist, next_quad())
+                    backpatch(cond_false, next_quad())
                     inWhenList = merge(inWhenList, forcaseList)
                     #------------#
                     #forCaseList = makelist(next_quad)
@@ -539,9 +540,9 @@ def forcase_stat():
             #-----p4-----#
             gen_quad('jump', '_', '_', forcase_quad)
             backpatch(inWhenList, next_quad())
-            outlist = makelist(next_quad())
-            gen_quad('jump', '_', '_')
-            backpatch(outlist, next_quad())
+            #outlist = makelist(next_quad()) #redundant code
+            #gen_quad('jump', '_', '_')
+            #backpatch(outlist, next_quad())
             #------------#
             #gen_quad("jump" , "_" , "_" , "_")
             if(tokenID == 'enddefault'):
