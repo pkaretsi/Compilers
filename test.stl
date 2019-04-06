@@ -55,6 +55,14 @@ program test
 	loop
 		input w;
 		if(not [w>=5]) then
+			loop
+				if(x=3) then
+					abc := 3;
+					exit
+				endif;
+				z :=123
+			endloop;
+			print z;
 			exit
 		endif;
 		ab := 3
