@@ -88,7 +88,7 @@ def backpatch(qlist, zlabel):
 
 #-----Lexical Analyzer-----# 
 def lex():
-    global tokenID, token, fline, f, buffer, counter, state, endOfFile
+    global tokenID, token, fline, f, buffer, counter, state, endOfFile, a
     #initial values every time lex() begins
     counter = 0 
     state = 0
@@ -818,7 +818,58 @@ for l in quad_program_list:
 interFile.close()
 #some quick preparation for C code
 #Cfile = open('interC.c', 'w')
-'''for l in quad_program_list:
-    if quad_program_list[l][0] == 'jump':
-        print('goto L_'+ str(quad_program_list[l][3])+';') '''
-    
+print("int main()")
+print("{")
+print("L_0:")
+a = 1
+for i in quad_program_list: 
+    if i != len(quad_program_list):
+        #assign
+        if quad_program_list[i][0] == ":=" :
+            print("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]))
+            a = a+1
+        #operators
+        if quad_program_list[i][0] == "+" :
+            print("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + "+" + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]))
+            a = a+1
+        if quad_program_list[i][0] == "-" :
+            print("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + "-" + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]))
+            a = a+1
+        if quad_program_list[i][0] == "*" :
+            print("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + "*" + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]))
+            a = a+1
+        if quad_program_list[i][0] == "/" :
+            print("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + "/" + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]))
+            a = a+1
+        #comparisons
+        if quad_program_list[i][0] == "<" :
+            print("L_" + str(a) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3])  + "  // " + str(quad_program_list[i]))
+            a = a+1
+        if quad_program_list[i][0] == ">" :
+            print("L_" + str(a) + ":" + "\t" + "if " + "("  + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) + "  // " + str(quad_program_list[i]))
+            a = a+1
+        if quad_program_list[i][0] == "<>" :
+            print("L_" + str(a) + ":" + "\t" + "if" + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) + "  // " + str(quad_program_list[i]))
+            a = a+1
+        #jump
+        if quad_program_list[l][0] == "jump":
+            print("L_" + str(i) + ":" + "\t" + "goto L_"+ str(quad_program_list[l][3])+";" + "  // " + str(quad_program_list[i]))
+            a = a+1
+        #return 
+        if quad_program_list[l][0] ==  "retv" :
+            print("L_" + str(a) + ":" + "\t" + "return " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]))
+            a = a+1
+        #input
+        if quad_program_list[i][0] == "inp" :
+            print("L_" + str(a) + ":" + "\t" + "input " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]))
+            a = a+1
+        #output
+        if quad_program_list[i][0] == "out" :
+            print("L_" + str(a) + ":" + "\t" + "print " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]))
+            a = a+1
+            
+    else :
+        print("L_" + str(len(quad_program_list) + 1) + ": {}")
+        print("}")
+        
+
