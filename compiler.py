@@ -503,9 +503,9 @@ def exit_stat():
     return exitList
 
 def forcase_stat():
-    statList = emptylist()
     lex()
     #-----p1-----#
+    statList = emptylist()
     forcase_quad = next_quad()
     exitList = emptylist()
     #------------#
@@ -804,75 +804,84 @@ def produceCFile(name):
     #second check for variables' declaration
     #should correct begin_block name, not plain name
     #should fix the order the quadruples are added in the file
+    variables = []
+    for q in quad_program_list:
+        if isinstance(quad_program_list[q][1], str) and not quad_program_list[q][1].isdigit() and quad_program_list[q][1] not in variables:
+            variables.append(quad_program_list[q][1])
+        if isinstance(quad_program_list[q][2], str) and not quad_program_list[q][2].isdigit() and quad_program_list[q][2] not in variables:
+            variables.append(quad_program_list[q][2])
+        if isinstance(quad_program_list[q][3], str) and not quad_program_list[q][3].isdigit() and quad_program_list[q][3] not in variables:
+            variables.append(quad_program_list[q][3])
+    variables.remove(name)
+    variables.remove("_")
     cfile = open(name + '.c', 'w')
     cfile.write("#include <stdio.h>\n\n")
     for i in quad_program_list:
-        if (quad_program_list[i][0] == "begin_block") and (quad_program_list[i][1] == name) :
-            cfile.write("int main()\n{\n");
+        if (quad_program_list[i][0] == "begin_block") and (quad_program_list[i][1] == name) : #filename should be the same as program name?
+            cfile.write("int main()\n{\n")
+            cfile.write("\tint ")
+            for var in range(len(variables)-1):
+                cfile.write(variables[var] + ", ")
+            cfile.write(variables[-1] + ";\n")
         elif quad_program_list[i][0] == ":=" :
             #assign
             #str(i) because we need quadruple's label
-            cfile.write("L_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            cfile.write("\tL_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
         #operators
         elif quad_program_list[i][0] == "+" :
-            cfile.write("L_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + " + " + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            if quad_program_list[i][3] not in variables:
+                variables.append(quad_program_list[i][3])
+            cfile.write("\tL_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + " + " + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
         elif quad_program_list[i][0] == "-" :
-            cfile.write("L_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + " - " + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            if quad_program_list[i][3] not in variables:
+                variables.append(quad_program_list[i][3])
+            cfile.write("\tL_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + " - " + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
         elif quad_program_list[i][0] == "*" :
-            cfile.write("L_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + " * " + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            if quad_program_list[i][3] not in variables:
+                variables.append(quad_program_list[i][3])
+            cfile.write("\tL_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + " * " + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
         elif quad_program_list[i][0] == "/" :
-            cfile.write("L_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + " / " + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            if quad_program_list[i][3] not in variables:
+                variables.append(quad_program_list[i][3])
+            cfile.write("\tL_" + str(i) + ":" + "\t" + str(quad_program_list[i][3]) + " = " + str(quad_program_list[i][1]) + " / " + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
         #comparisons
         elif quad_program_list[i][0] == "<=" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3])  + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) +";"  + "  // " + str(quad_program_list[i]) + "\n")
         elif quad_program_list[i][0] == ">=" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3])  + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) +";" + "  // " + str(quad_program_list[i]) + "\n")
         elif quad_program_list[i][0] == "=" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3])  + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) +";" + "  // " + str(quad_program_list[i]) + "\n")
         elif quad_program_list[i][0] == "<" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3])  + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) +";" + "  // " + str(quad_program_list[i]) + "\n")
         elif quad_program_list[i][0] == ">" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "if " + "("  + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "if " + "("  + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) +";" + "  // " + str(quad_program_list[i]) + "\n")
         elif quad_program_list[i][0] == "<>" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "if" + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "if" + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) +";" + "  // " + str(quad_program_list[i]) + "\n")
         #jump
-        elif quad_program_list[l][0] == "jump":
-            cfile.write("L_" + str(i) + ":" + "\t" + "goto L_"+ str(quad_program_list[l][3])+";" + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+        elif quad_program_list[i][0] == "jump":
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "goto L_"+ str(quad_program_list[i][3])+";" + "  // " + str(quad_program_list[i]) + "\n")
         #return 
-        elif quad_program_list[l][0] ==  "retv" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "return " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+        elif quad_program_list[i][0] ==  "retv" :
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "return " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
         #input
         #input works as scanf in C
         elif quad_program_list[i][0] == "inp" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "scanf('%d', &" + str(quad_program_list[i][1]) + ");" + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            cfile.write("\tL_" + str(i) + ":" + "\t" + 'scanf("%d", &' + str(quad_program_list[i][1]) + ");" + "  // " + str(quad_program_list[i]) + "\n")
         #output
         #print works as printf in C
         elif quad_program_list[i][0] == "out" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "printf(""" + str(quad_program_list[i][1]) + "\n"");" + "  // " + str(quad_program_list[i]) + "\n")
-            #a = a+1
+            cfile.write("\tL_" + str(i) + ":" + "\t" + 'printf("' + str(quad_program_list[i][1]) + ' = %d\\n",' + str(quad_program_list[i][1]) + ");" + "  // " + str(quad_program_list[i]) + "\n")
         #exit program
         elif quad_program_list[i][0] == "halt" :
-            cfile.write("L_" + str(i) + ":" + "\t" + "return 0;"  + " // " + str(quad_program_list[i]) + "\n")
-            cfile.write("\n}")
-            #a = a+1
-        #should add par operator    
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "return 0;"  + " // " + str(quad_program_list[i]) + "\n")
+            cfile.write("}")
+        #should add par operator
     cfile.close()
 
 #-----Main function-----#
+if(len(sys.argv)<2):
+    print("Error: Expecting file name.")
+    sys.exit()
 f = open(sys.argv[1], 'r') #read file name as command line argument
 #global var_list, quad_list, s1, s2
 s1 = "__"
@@ -884,115 +893,12 @@ if(not (endOfFile or tokenID=='EOF')):
     print('Syntax error: Cannot recognize characters after "endprogram".')
 else:
     print('EOF: Compilation ended successfully!');
-tokens = sys.argv[1].split(".")
-with  open(tokens[0] + ".int", 'w') as interFile :
+
+tokens = sys.argv[1].split(".") #keep file name without the ending, to create intermediate code file and C file
+with open(tokens[0] + ".int", 'w') as interFile :
     for l in quad_program_list:
-        print(str(l), quad_program_list[l])
+        #print(str(l), quad_program_list[l])
         interFile.write(str(l)+' '+str(quad_program_list[l])+' \n')
-    f.close()
-    interFile.close()
+f.close()
+#interFile.close()
 produceCFile(tokens[0])
-'''operators = []
-for l in quad_program_list:
-    if(quad_program_list[l][0] not in operators):
-        operators.append(quad_program_list[l][0]) '''
-'''
-
-#C code
-#get values of dictionary for quadruples
-quad_list = list(quad_program_list.values())
-print(quad_list)
-for j in range(len(quad_list)):
-    if quad_list[j][0] == "begin_block" or quad_list[j][0] == "end_block" or quad_list[j][0] == "jump" or quad_list[j][0] == "call" :
-        quad_list[j] = "__"
-
-for j in range(len(quad_list)):
-    if quad_list[j] != "__" :
-        var_list.append(quad_list[j][1])
-
-counter = list(Counter(var_list).keys())
-for i in range(len(counter)):
-    if counter[i].isdigit():
-        counter[i] = "__"
-
-while s1 in counter : counter.remove(s1)
-while s2 in counter : counter.remove(s2)
-
-#print in C file
-with open (tokens[0] + ".c", "w") as C:
-    C.write("int main()" + "\n")
-    C.write("{" + "\n")
-    C.write("int  ")
-    for i in range(len(counter)):
-        if i == len(counter)-1:
-            C.write(counter[i])
-            C.write(";")
-        else:
-            C.write(counter[i] + ",")
-    C.write("\n" + "L_0:" + "\n")
-    a = 1
-    for i in quad_program_list: 
-        if i != len(quad_program_list):
-            #assign
-            if quad_program_list[i][0] == ":=" :
-                C.write("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            #operators
-            if quad_program_list[i][0] == "+" :
-                C.write("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + "+" + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            if quad_program_list[i][0] == "-" :
-                C.write("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + "-" + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            if quad_program_list[i][0] == "*" :
-                C.write("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + "*" + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            if quad_program_list[i][0] == "/" :
-                C.write("L_" + str(a) + ":" + "\t" + str(quad_program_list[i][3]) + "=" + str(quad_program_list[i][1]) + "/" + str(quad_program_list[i][2]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            #comparisons
-            if quad_program_list[i][0] == "<=" :
-                C.write("L_" + str(a) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3])  + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            if quad_program_list[i][0] == ">=" :
-                C.write("L_" + str(a) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3])  + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            if quad_program_list[i][0] == "=" :
-                C.write("L_" + str(a) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3])  + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            
-            if quad_program_list[i][0] == "<" :
-                C.write("L_" + str(a) + ":" + "\t" + "if " + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3])  + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            if quad_program_list[i][0] == ">" :
-                C.write("L_" + str(a) + ":" + "\t" + "if " + "("  + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            if quad_program_list[i][0] == "<>" :
-                C.write("L_" + str(a) + ":" + "\t" + "if" + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            #jump
-            if quad_program_list[l][0] == "jump":
-                C.write("L_" + str(a) + ":" + "\t" + "goto L_"+ str(quad_program_list[l][3])+";" + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            #return 
-            if quad_program_list[l][0] ==  "retv" :
-                C.write("L_" + str(a) + ":" + "\t" + "return " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            #input
-            if quad_program_list[i][0] == "inp" :
-                C.write("L_" + str(a) + ":" + "\t" + "input " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            #output
-            if quad_program_list[i][0] == "out" :
-                C.write("L_" + str(a) + ":" + "\t" + "print " + str(quad_program_list[i][1]) + ";" + "  // " + str(quad_program_list[i]) + "\n")
-                a = a+1
-            if quad_program_list[i][0] == "halt" :
-                C.write("L_" + str(a) + ":" + "\t" + "return 0;"  // " + str(quad_program_list[i])" + "\n")
-                a = a+1
-            #should add par operator    
-        else :
-            C.write("L_" + str(len(quad_program_list) + 1) + ": {}" + "\n")
-            C.write("}" + "\n")
-
-C.close()
-'''        
