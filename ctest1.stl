@@ -1,46 +1,25 @@
 program ctest1
-    declare c,a,b,t;
-
+    declare c,a,b,t ;// enddeclare
     a:=1;
-	b:=0;
-    while (a+b<=1 and b<5)
-	    if (a=1) then
-			c:=2;
+	b:=0;	
+	b := b + 1;
+	//added while loop with nested forcase statement
+	while (b<25 or b > 10)
+		b := b + 1
+		forcase
+			when (b > 15): print b
+			when (b <> 15): return b+2
+			default: print a enddefault
+		endforcase
+		print c;
 			
-			while (b<10)
-				b := b + 3
-				print b;
-				print c;
-			endwhile
-	    else 
-			if (a=2) then
-				c:=4;
-				print c;			
-			else 
-				c:=0;
-				print c
-			endif
-		endif;
-	endwhile
-		
-		b := b + 1;
-		//added while loop with nested forcase statement
-		while (b<25 and b > 10)
-				b := b + 1
-				forcase
-					when (b > 15): print b
-					when (b <> 15): return b+2
-					default: print a enddefault
-				endforcase
-				print c;
-		endwhile
 		
 		
 		while (a<1)
-		    if (a=2) then
+			if (a=2) then
 				print a;
-			    while(b=1)
-				    c:=3*a + 3*b;
+				while(b=1)
+					c:=3*a + 3*b;
 					print c;
 					//added extra while loop
 					while(c <> 2)
@@ -69,9 +48,32 @@ program ctest1
 			incase
 				when (a+3 <> 5): print a
 			endincase;	
-		endwhile;
+			
+			while (a+b<=1 and b<5)
+				if (a=1) then
+					c:=2;
+						
+					while (b<10)
+						b := b + 3
+						print b;
+						print c;
+					endwhile
+				else 
+					if (a=2) then
+						c:=4;
+						print c;			
+					else 
+						c:=0;
+						print c
+					endif
+				endif;
+			endwhile
 		
-	
+		endwhile;		
+				
+	endwhile
+
+
 	print a;
 	print b
 endprogram
