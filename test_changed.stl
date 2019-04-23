@@ -1,0 +1,115 @@
+//Foteini Karetsi, A.M. 2990, username: cse52990
+//Eleftheria Bella, A.M. 3039, username: cse53039
+
+/*This is a Starlet test program. 
+Includes an example of every structure Starlet supports.
+In comments you can find error cases that our compiler successfully recognizes.
+Some of the test cases of non accepted behaviour are:
+1. Identifiers with length > 30 characters keep only the 30 first characters.
+2. Constants' absolute value cannot exceed 32767.
+3. Binded words are non accepted identifiers for assignment or declaration.
+4. Missing commas, parenthesis, semicolons, colons and identifiers.
+5. Nested comments.
+6. Nested parenthesis.
+7. Everything after endprogram is not acceptable.
+8. Error occurs when finding a character that is not included in the vocabulary.
+9. Declarations contain only identifiers.*/
+
+program test
+	declare x,y,z,w,g,ab;
+	declare abcdefghijklmnopqrstuvwxyz1234567;
+	//declare constant1 := 5;
+	//declare var e;
+	
+	function zeta() //empty argument's list
+		print z
+	endfunction
+	
+	function a(in x, inandout w)
+		function b(inout z)
+			//outofboundsvar := 32768;
+			z:=z+3;
+			if (z>4) then
+				print z*2;
+				
+				//added forcase statement
+				forcase
+					when (z<25): print z+2
+					when (z>10): return z+z
+					default: print z enddefault
+				endforcase
+				z := z+1
+			else
+				x := zeta();
+				z:=0
+				//added triple loop with nested while loop
+				loop
+					if(not [w>=2]) then
+						loop
+							if(x<>3) then
+								x := 3;
+								exit
+							endif;
+							
+							loop
+								if(x > 3) then
+									w:=10
+									while (x > 3 and x < 20)
+										print w+2
+										print x*3
+									endwhile
+							z :=123
+						endloop;
+						print z;
+						exit
+					endif;
+				endloop;
+			endif
+		endfunction
+		
+		x :=x+8;
+		while (x>10)
+			x := b(inout x, inandout w)
+				//added incase statement
+				incase
+					when (x < 20): print x
+					when (x > 20) : print x*2
+				endincase
+		endwhile
+	endfunction
+	
+	y:=4;
+	dowhile
+		if (y>=6) then
+			z := y+2
+		endif;
+		y:=y+1
+	enddowhile (y>12);
+	
+	loop
+		input w;
+		if(not [w>=5]) then
+			loop
+				if(x=3) then
+					abc := 3;
+					exit
+				endif;
+				z :=123
+			endloop;
+			print z;
+			exit
+		endif;
+		ab := 3
+	endloop;
+	
+	incase
+		when (x+y <> z+w): print x+y
+		when (z<3) : print z
+	endincase;
+
+	forcase
+		when (ab<>3): print ab
+		when ([y>5 and z>10 or ab=3]): return y+z
+		default: print x enddefault
+	endforcase
+endprogram
