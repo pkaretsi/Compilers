@@ -6,11 +6,18 @@ program ctest1
     while (a+b<=1 and b<5)
 	    if (a=1) then
 			c:=2;
+			//added while and if statement
+			while (b<10)
+				b = b + 3
+				print b
+				if (b > 8)
+					print a*b
+				endif
 			print c;
 	    else 
 			if (a=2) then
 				c:=4;
-				print c;
+				print c;			
 			else 
 				c:=0;
 				print c
@@ -18,14 +25,50 @@ program ctest1
 		endif;
 		
 		b := b + 1;
+		//added while loop with nested forcase statement
+		while (b<25 and b > 10)
+				b = b + 1
+				forcase
+					when (b > 15): print b
+					when (b <> 15): return b+2
+					default: print a enddefault
+				endforcase
+			print c;
+		
 	    while (a<1)
 		    if (a=2) then
 				print a;
 			    while(b=1)
-				    c:=2;
+				    c:=3*a + 3*b;
 					print c;
+					//added extra while loop
+					while(c <> 2)
+						c = c - 1
+						print c
+					endwhile
+					//added nested loops
+					loop
+					t:=c
+						if(t>a) then
+							loop
+								if(t>1) then
+									t := 3;
+									exit
+								endif;
+								a :=123
+							endloop;
+							print t;
+							exit
+						endif;
+						t = t*3
+					endloop;
+					
 				endwhile
 			endif
+			//added incase statement
+				incase
+					when (a+3 <> 5): print a
+				endincase;	
 		endwhile;
 		a := a + 1;
 	endwhile;
