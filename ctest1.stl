@@ -6,7 +6,7 @@ program ctest1
     while (a+b<=1 and b<5)
 	    if (a=1) then
 			c:=2;
-			//added while and if statement
+			
 			while (b<10)
 				b := b + 3
 				print b;
@@ -21,6 +21,7 @@ program ctest1
 				print c
 			endif
 		endif;
+	endwhile
 		
 		b := b + 1;
 		//added while loop with nested forcase statement
@@ -34,7 +35,8 @@ program ctest1
 				print c;
 		endwhile
 		
-	    while (a<1)
+		
+		while (a<1)
 		    if (a=2) then
 				print a;
 			    while(b=1)
@@ -61,7 +63,6 @@ program ctest1
 						endif;
 						t := t*3
 					endloop;
-					
 				endwhile
 			endif
 			//added incase statement
@@ -69,8 +70,8 @@ program ctest1
 				when (a+3 <> 5): print a
 			endincase;	
 		endwhile;
-		a := a + 1;
-	endwhile;
+		
+	
 	print a;
 	print b
 endprogram
