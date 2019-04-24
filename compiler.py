@@ -188,7 +188,7 @@ def newTemp():
     tempvar = 'T_'+str(temp_value)
     temp_value +=1
     createVariable(tempvar, "variable", len(symbolList[-1].scopelist)*4 + 12, symbolList[-1].scopelist)
-    printSymbolList()
+    #printSymbolList()
     return tempvar
 
 def emptylist():
@@ -438,13 +438,13 @@ def declarations():
 def varlist():
     if(tokenID == IDTK):
         createVariable(token, "variable", len(symbolList[-1].scopelist)*4 + 12, symbolList[-1].scopelist)
-        printSymbolList()
+        #printSymbolList()
         lex()
         while(tokenID == ','):
             lex()
             if(tokenID == IDTK):
                 createVariable(token, "variable", len(symbolList[-1].scopelist)*4 + 12, symbolList[-1].scopelist)
-                printSymbolList()
+                #printSymbolList()
                 lex()
             else:
                 displayError('Error5: Expecting identifier after comma. Terminating program')
@@ -459,7 +459,7 @@ def subprogram():
         funcName = token
         createFunction(funcName, "function", symbolList[-1].scopelist)
         createScope(symbolList[-1].nestingLevel +1)
-        printSymbolList()
+        #printSymbolList()
         lex()
         funcbody(funcName)
         if(tokenID == 'endfunction'):
@@ -497,7 +497,7 @@ def formalparitem():
         lex()
         if(tokenID == IDTK):
             createParameter(token, "parameter", len(symbolList[-1].scopelist)*4 + 12, arg.argMode, symbolList[-1].scopelist)
-            printSymbolList()
+            #printSymbolList()
             lex()
         else:
             displayError('Error10: Expecting variable\'s identifier after in, or there is a non accepted identifier. Terminating program')
@@ -506,7 +506,7 @@ def formalparitem():
         lex()
         if(tokenID == IDTK):
             createParameter(token, "parameter", len(symbolList[-1].scopelist)*4 + 12, arg.argMode, symbolList[-1].scopelist)
-            printSymbolList()
+            #printSymbolList()
             lex()
         else:
             displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
@@ -515,7 +515,7 @@ def formalparitem():
         lex()
         if(tokenID == IDTK):
             createParameter(token, "parameter", len(symbolList[-1].scopelist)*4 + 12, arg.argMode, symbolList[-1].scopelist)
-            printSymbolList()
+            #printSymbolList()
             lex()
         else:
             displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
@@ -1033,7 +1033,7 @@ def produceCFile(name):
         elif quad_program_list[i][0] == ">" :
             cfile.write("\tL_" + str(i) + ":" + "\t" + "if " + "("  + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) +";" + "  // " + str(quad_program_list[i]) + "\n")
         elif quad_program_list[i][0] == "<>" :
-            cfile.write("\tL_" + str(i) + ":" + "\t" + "if" + "(" + str(quad_program_list[i][1]) + str(quad_program_list[i][0]) + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) +";" + "  // " + str(quad_program_list[i]) + "\n")
+            cfile.write("\tL_" + str(i) + ":" + "\t" + "if" + "(" + str(quad_program_list[i][1]) + "!=" + str(quad_program_list[i][2]) + ") " + "goto L_" + str(quad_program_list[i][3]) +";" + "  // " + str(quad_program_list[i]) + "\n")
         #jump
         elif quad_program_list[i][0] == "jump":
             cfile.write("\tL_" + str(i) + ":" + "\t" + "goto L_"+ str(quad_program_list[i][3])+";" + "  // " + str(quad_program_list[i]) + "\n")
