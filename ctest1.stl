@@ -1,23 +1,26 @@
 program ctest1
     declare c,a,b,t ;// enddeclare
     a:=1;
-	b:=0;	
+	c:=4;
+	b:=5;	
 	b := b + 1;
 	//added while loop with nested forcase statement
-	while (b<25 or b > 10)
-		b := b + 1
+	while (b>5 and b<10)
+		b := b + 1;
 		forcase
-			when (b > 15): print b
-			when (b <> 15): return b+2
+			when (b > 5): print b-1
+			when (b < 5): print b+2
 			default: print a enddefault
 		endforcase
 		print c;
+		print a;
 			
 		
 		
-		while (a<1)
+		while (a<3)
 			if (a=2) then
 				print a;
+				print c;
 				while(b=1)
 					c:=3*a + 3*b;
 					print c;
@@ -46,10 +49,10 @@ program ctest1
 			endif
 			//added incase statement
 			incase
-				when (a+3 <> 5): print a
+				when (a+3 <> 4): print a				
 			endincase;	
 			
-			while (a+b<=1 and b<5)
+			while (a+b<=3 and b<5)
 				if (a=1) then
 					c:=2;
 						
@@ -67,8 +70,8 @@ program ctest1
 						print c
 					endif
 				endif;
-			endwhile
-		
+			endwhile;
+			a:= a+10
 		endwhile;		
 				
 	endwhile

@@ -37,7 +37,7 @@ program test
 					when (z<25): print z+2
 					when (z>10): return z+z
 					default: print z enddefault
-				endforcase
+				endforcase;
 				z := z+1
 			else
 				x := zeta();
@@ -55,10 +55,12 @@ program test
 								if(x > 3) then
 									w:=10
 									while (x > 3 and x < 20)
-										print w+2
+										print w+2;
 										print x*3
-									endwhile
-							z :=123
+									endwhile;
+								endif;
+							z :=123;
+							endloop;
 						endloop;
 						print z;
 						exit
