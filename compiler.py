@@ -50,6 +50,8 @@ exitloop = [] #add every quad that corresponds to an exit command, use the first
 #symbol array globals
 symbolList = []
 mainFramelength = 0
+enableReturnSearch = False
+loopCounter = 0
 
 #display errors and terminate
 def displayError(msg): #Prints error message and terminates compiler
@@ -374,7 +376,7 @@ def lex():
 #-----Definition of Starlet's grammar rules-----#   
 def program():
     createScope(0)
-    printSymbolList()
+    #printSymbolList()
     lex() #lexical analyzer - first rule, need to "fill" token & tokenID
     if(tokenID == 'program'):
         lex()
@@ -392,8 +394,8 @@ def program():
     else:
         displayError('Error3: Expecting binded word "program", instead of "'+ tokenID+'"\nTerminating program')
 
-def block(name):
-    global mainFramelength
+def block(name, returnList = []):
+    global mainFramelength, enableReturnSearch
     f = None
     v = None
     declarations()
@@ -402,7 +404,9 @@ def block(name):
         f = searchEntity(name, symbolList[-1].nestingLevel)
         f.startQuad = next_quad()
     gen_quad("begin_block", name)
-    statements()
+    if name == programName:
+        enableReturnSearch = True
+    statements(returnList)
     if(name == programName):
         gen_quad("halt")
     gen_quad("end_block", name)
@@ -430,6 +434,14 @@ def declarations():
     while(tokenID =='declare'):
         lex()
         varlist()
+        scope = symbolList[-1]
+        for entity1 in scope.scopelist:
+            flag = 0
+            for entity2 in scope.scopelist:
+                if entity1.name == entity2.name:
+                    flag = flag + 1
+            if flag > 1:
+                displayError('Cannot accept the same name for different variables in the same scope.')
         if(tokenID == ';'):
             lex()
         else:
@@ -454,14 +466,25 @@ def subprograms():
         subprogram()
 
 def subprogram():
+    returnList = []
     lex()
     if(tokenID==IDTK):
         funcName = token
         createFunction(funcName, "function", symbolList[-1].scopelist)
+        scope = symbolList[-1]
+        e = scope.scopelist[-1]
+        flag = 0
+        for i in range(len(scope.scopelist)-1):
+            if scope.scopelist[i].name == e.name:
+                    flag = flag + 1
+        if flag >= 1:
+            displayError('Cannot accept the same name for variables/functions in the same scope.')
         createScope(symbolList[-1].nestingLevel +1)
         #printSymbolList()
         lex()
-        funcbody(funcName)
+        funcbody(funcName, returnList)
+        if len(returnList) == 0:
+            displayError('No return statement found in function ' + funcName + ' . Terminating program')
         if(tokenID == 'endfunction'):
             lex()
         else:
@@ -469,9 +492,9 @@ def subprogram():
     else:
         displayError('Error7: Expecting function\'s identifier, instead of '+ tokenID+'\nTerminating program')
 
-def funcbody(name):
+def funcbody(name, returnList):
     formalpars()
-    block(name)
+    block(name, returnList)
 
 def formalpars():
     if(tokenID == '('):
@@ -522,39 +545,35 @@ def formalparitem():
     else:
         displayError('Error13: Expecting parameter\'s type, instead of '+ tokenID+'.\nTerminating program')
 
-def statements():
-    statementsList = emptylist()
-    statementsList = statement()
+def statements(returnList = []):
+    statement(returnList)
     while(tokenID == ';'):
         lex()
-        statementsList1 = statement()
-    return statementsList
+        statement(returnList)
 
-def statement(): #look forward to predict next function
-    statlist = emptylist()
+def statement(returnList = []): #look forward to predict next function
     if(tokenID == IDTK): #assignment-statement, begin with variable
         assignment_stat()
     if(tokenID == 'if'):
-        statlist = if_stat()
+        if_stat()
     if(tokenID == 'while'):
-        statlist = while_stat()
+        while_stat()
     if(tokenID == 'dowhile'):
-        statlist = do_while_stat()
+        do_while_stat()
     if(tokenID == 'loop'):
-        statlist = loop_stat()
+        loop_stat()
     if(tokenID == 'exit'):
-        statlist = exit_stat()
+        exit_stat()
     if(tokenID == 'forcase'):
-        statlist = forcase_stat()
+        forcase_stat()
     if(tokenID == 'incase'):
-        statlist = incase_stat()
+        incase_stat()
     if(tokenID == 'return'):
-        return_stat()
+        return_stat(returnList)
     if(tokenID == 'input'):
         input_stat()
     if(tokenID == 'print'):
         print_stat()
-    return statlist
 
 def assignment_stat():
     idName = token
@@ -567,7 +586,6 @@ def assignment_stat():
         displayError('Error14: Expecting assignment operator, instead of '+ tokenID+'.\nTerminating program')
 
 def if_stat():
-    statList = emptylist()
     lex()
     if(tokenID == '('):
         lex()
@@ -577,7 +595,7 @@ def if_stat():
             if(tokenID == 'then'):
                 lex()
                 backpatch(cond_true, next_quad())
-                statList = statements()
+                statements()
                 ifList = makelist(next_quad())
                 gen_quad("jump")
                 backpatch(cond_false, next_quad())
@@ -593,17 +611,13 @@ def if_stat():
             displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
     else:
         displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
-    return statList
 
 def elsepart():
-    statList = emptylist()
     if(tokenID == 'else'):
         lex()
-        statList = statements()
-    return statList
+        statements()
 
 def while_stat():
-    statList = emptylist()
     lex()
     while_quad = next_quad()
     if(tokenID == '('):
@@ -612,7 +626,7 @@ def while_stat():
         if(tokenID == ')'):
             lex()
             backpatch(condTrue, next_quad())
-            statList = statements()
+            statements()
             gen_quad("jump", "_", "_", while_quad)
             backpatch(condFalse, next_quad())
             if(tokenID == 'endwhile'):
@@ -623,13 +637,11 @@ def while_stat():
             displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
     else:
         displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
-    return statList
 
 def do_while_stat():
-    statList = emptylist()
     lex()
     do_while_quad = next_quad()
-    statlist = statements()
+    statements()
     if(tokenID == 'enddowhile'):
         lex()
         if(tokenID == '('):
@@ -645,10 +657,10 @@ def do_while_stat():
             displayError('Error9: Expecting "(", instead of '+ tokenID+'.\nTerminating program')
     else:
         displayError('Error18: Expecting binded word "enddowhile", instead of '+ tokenID+'.\nTerminating program')
-    return statList
     
 def loop_stat():
-    statList = emptylist()
+    global loopCounter
+    loopCounter = loopCounter + 1
     lex()
     statements()
     if(exitloop != []):
@@ -658,9 +670,12 @@ def loop_stat():
         lex()
     else:
         displayError('Error19: Expecting binded word "endloop", instead of '+ tokenID+'.\nTerminating program')
-    return statList
 
 def exit_stat():
+    global loopCounter
+    loopCounter = loopCounter - 1
+    if loopCounter < 0:
+        displayError('ALERT : There is a redundant exit statement.')
     lex()
     exitloop.append(next_quad())
     exitList = makelist(next_quad())
@@ -670,7 +685,6 @@ def exit_stat():
 def forcase_stat():
     lex()
     #-----p1-----#
-    statList = emptylist()
     forcase_quad = next_quad()
     exitList = emptylist()
     #------------#
@@ -686,7 +700,7 @@ def forcase_stat():
                     backpatch(cond_true, next_quad())
                     #------------#
                     lex()
-                    statList = statements()
+                    statements()
                     #-----p3-----#
                     forcaseList = makelist(next_quad())
                     gen_quad("jump")
@@ -703,7 +717,7 @@ def forcase_stat():
         lex()
         if(tokenID == ':'):
             lex()
-            statList = statements()
+            statements()
             #-----p4-----#
             gen_quad("jump", "_", "_", forcase_quad)
             backpatch(exitList, next_quad())
@@ -720,10 +734,8 @@ def forcase_stat():
            displayError('Error20: Expecting ":", instead of '+ tokenID+'.\nTerminating program')
     else:
         displayError('Error23: Expecting binded word "default", instead of '+ tokenID+'.\nTerminating program')
-    return statList
             
 def incase_stat():
-    statList = emptylist()
     t = newTemp()
     flagQ = next_quad()
     gen_quad(":=", "0", "_", t)
@@ -739,7 +751,7 @@ def incase_stat():
                     lex()
                     backpatch(cond_true, next_quad())
                     gen_quad(":=", "1", "_", t)
-                    statList = statements()
+                    statements()
                     backpatch(cond_false, next_quad())
                 else:
                     displayError('Error20: Expecting ":", instead of '+ tokenID+'.\nTerminating program')
@@ -752,12 +764,15 @@ def incase_stat():
         lex()
     else:
         displayError('Error24: Expecting binded word "endincase", instead of '+ tokenID+'.\nTerminating program')
-    return statList
 
-def return_stat(): 
+def return_stat(returnList): 
     lex()
     E = expression()
+    if enableReturnSearch:
+        displayError('Found return statement out of function range. Terminating program')
+    returnQuad = next_quad()
     gen_quad("retv", E)
+    returnList.append(returnQuad)
     
 def print_stat(): 
     lex()
@@ -773,27 +788,42 @@ def input_stat():
     else:
         displayError('Error25: Expecting input identifier, instead of '+ tokenID+'.\nTerminating program')
 
-def actualpars():
+def actualpars(argList):
     lex()
-    actualparlist()
+    aList = actualparlist()
+    if len(argList) < len(aList):
+        displayError('Too many arguments assigned for this function.')
+    elif len(argList) > len(aList):
+        displayError('This function accepts ' + str(len(argList)) + ' arguments. You inserted ' + str(len(aList)))
+    if argList != aList :
+        print(argList)
+        print(aList)
+        displayError('Arguments assigned are different than the ones that the function is defined with.')
     if(tokenID == ')'):
         lex()
     else:
         displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
     
 def actualparlist():
+    aList = []
     if(not(tokenID == ')')):
-        actualparitem()
+        aType = actualparitem()
+        aList.append(aType)
         while(tokenID == ','):
             lex()
-            actualparitem()
+            aType = actualparitem()
+            aList.append(aType)
+    return aList
 
 def actualparitem():
-    if(tokenID == 'in'):  
+    type_result = ''
+    if(tokenID == 'in'):
+        type_result = tokenID
         lex()
         actualparitem_result = expression()
         gen_quad("par", actualparitem_result, "CV") #create quadruples here when having parameters
-    elif(tokenID == 'inout'): 
+    elif(tokenID == 'inout'):
+        type_result = tokenID
         lex()
         if(tokenID == IDTK):
             actualparitem_result =token 
@@ -802,6 +832,7 @@ def actualparitem():
         else:
             displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
     elif(tokenID == 'inandout'):
+        type_result = tokenID
         lex()
         if(tokenID == IDTK):
             actualparitem_result = token 
@@ -811,6 +842,7 @@ def actualparitem():
             displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
     else:
         displayError('Error13: Expecting actual parameter\'s type, instead of '+ tokenID+'.\nTerminating program')
+    return type_result
 
 def condition():
     [Q1true, Q1false] = boolterm()
@@ -911,20 +943,31 @@ def factor():
         ########## if id without parameters it is a variable, pass it to next level
         factor_result = token
         lex()
-        idtail_result = idtail()
+        entity = searchEntity(factor_result, symbolList[-1].nestingLevel)
+        parList = []
+        if entity.entity_type == 'function':
+            parList = []
+            for a in entity.argList:
+                parList.append(a.argMode)
+        idtail_result = idtail(parList)
         if(idtail_result !=''):
+            if entity.entity_type != 'function':
+                displayError('Trying to use ' + entity.entity_type + ' ' + entity.name + ' as a function.')
             retValue = newTemp()
             gen_quad("par", retValue, "RET")
             gen_quad("call", factor_result)
             factor_result = retValue
+        else:
+            if entity.entity_type == 'function':
+                displayError('Trying to use function as a variable.')
     else:
         displayError('Error28: Missing a constant, or a parenthesis or an identifier and nothing matches to what expecting as a factor.\nTerminating program')
     return factor_result
 
-def idtail():
+def idtail(argList):
     idtail_result = ''
     if(tokenID == '('):
-        actualpars()
+        actualpars(argList)
         idtail_result = 'arguments'
     return idtail_result
 
@@ -1056,10 +1099,11 @@ def produceCFile(name):
     cfile.close()
 
 #-----Main function-----#
+
 if(len(sys.argv)<2):
     print("Error: Expecting file name.")
     sys.exit()
-f = open(sys.argv[1], 'r') #read file name as command line argument
+f = open(sys.argv[1], 'r') #read file name as command line argument 
 program()
 if(not (endOfFile or tokenID=='EOF')):
     print('Syntax error: Cannot recognize characters after "endprogram".')
