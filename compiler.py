@@ -46,12 +46,13 @@ total_quads = 0
 temp_value = 0
 programName = ""
 exitloop = [] #add every quad that corresponds to an exit command, use the first item of the list to end loop
+loopCounterList = []
 
 #symbol array globals
 symbolList = []
 mainFramelength = 0
 enableReturnSearch = False
-loopCounter = 0
+#loopCounter = 0
 
 #display errors and terminate
 def displayError(msg): #Prints error message and terminates compiler
@@ -659,8 +660,7 @@ def do_while_stat():
         displayError('Error18: Expecting binded word "enddowhile", instead of '+ tokenID+'.\nTerminating program')
     
 def loop_stat():
-    global loopCounter
-    loopCounter = loopCounter + 1
+    loopCounterList.append(next_quad()) #do not know what to append
     lex()
     statements()
     if(exitloop != []):
@@ -668,19 +668,15 @@ def loop_stat():
         backpatch(exitlist, next_quad())
     if(tokenID == 'endloop'):
         lex()
+        loopCounterList.pop()
     else:
         displayError('Error19: Expecting binded word "endloop", instead of '+ tokenID+'.\nTerminating program')
 
 def exit_stat():
-    global loopCounter
-    loopCounter = loopCounter - 1
-    if loopCounter < 0:
-        displayError('ALERT : There is a redundant exit statement.')
+    if not loopCounterList: #if list does not have elements 
+        displayError('ALERT: Exit statements used outside loop statements. Terminating program')
     lex()
     exitloop.append(next_quad())
-    exitList = makelist(next_quad())
-    gen_quad("jump")
-    return exitList
 
 def forcase_stat():
     lex()
