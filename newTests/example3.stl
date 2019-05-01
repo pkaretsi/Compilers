@@ -1,0 +1,35 @@
+//Given example 3
+
+program example3
+	declare a,b,c,d,e,x,y,px,py,temp;
+	a:=2;
+	c:=3;
+	b:=1;
+	d:=0;
+	e:=0;
+	loop
+		if (a<c and b<=d) then
+			print a;
+			print b;
+			print c;
+			print d;
+			exit //goes to temp = px
+		endif;
+		d := d + 1;
+		if (a=e) then
+			c:=c+e
+		else
+			loop
+				if (not [a<=d]) then
+					print a;
+					exit //goes to c = c+1
+				endif;
+				a:=a+b
+			endloop
+		endif;
+		c := c + 1
+	endloop;
+	temp:=px;
+	x:=1;
+	y:=2
+endprogram
