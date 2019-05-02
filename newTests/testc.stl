@@ -1,0 +1,32 @@
+//Given example 
+//Symbol array, intermediate code and C code OK
+
+program testc
+    declare c,a,b,t;
+
+    a:=0;
+	b:=0;
+    while (a+b<1 and b<5)
+	    if (t=1) then
+			c:=2;
+	    else 
+			if (t=2) then
+				c:=4;
+			else c:=0
+			endif
+		endif;
+		print c;
+	    while (a<1)
+		    if (a=0) then
+			    while(not [b=1])
+				    c:=2;
+					b:=b+1
+				endwhile
+			endif;
+			a:=a+1
+		endwhile;
+	print c;
+	print b
+	endwhile;
+	print a
+endprogram
