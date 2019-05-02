@@ -1,4 +1,5 @@
-//Given example 1
+/*Given example 1, symbol array and intermediate code OK,
+ corrected func names in C file -> not variables*/
 
 program example1
 	declare d,i,g,f;
