@@ -1,4 +1,5 @@
 //Given example 2
+//Symbol array and intermediate code OK
 
 program example2
 	declare x,y,z;
