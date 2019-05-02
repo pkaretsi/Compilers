@@ -1,4 +1,5 @@
-//Given example 3
+//Modified Given example 3
+//Symbol array, intermediate code and C code OK
 
 program example3
 	declare a,b,c,d,e,x,y,px,py,temp;
@@ -8,28 +9,30 @@ program example3
 	d:=0;
 	e:=0;
 	loop
-		if (a<c and b<=d) then
+		if (not [a<c and b<=d]) then
 			print a;
 			print b;
 			print c;
 			print d;
-			exit //goes to temp = px
+			exit 
 		endif;
 		d := d + 1;
 		if (a=e) then
 			c:=c+e
 		else
 			loop
-				if (not [a<=d]) then
+				if (not [a<=d] or a=2) then
 					print a;
-					exit //goes to c = c+1
+					exit
 				endif;
 				a:=a+b
 			endloop
 		endif;
-		c := c + 1
+		c := c + 1;
 	endloop;
 	temp:=px;
 	x:=1;
-	y:=2
+	y:=2;
+	print x;
+	print y
 endprogram
