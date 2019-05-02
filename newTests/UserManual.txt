@@ -1,0 +1,16 @@
+#Foteini Karetsi, A.M. 2990, username: cse52990
+#Eleftheria Bella, A.M. 3039, username: cse53039
+
+Our compiler's name is compiler.py and is written in Python 3.5. We have verified that the compiler runs successfully in the department's labs and produces the expected results. The program is executed by the following command:
+python3 compiler.py <testfile>
+
+Along with the compiler we have submitted the following test files:
+1. test1.stl: Contains functions' declarations and calls as well as different types of statements. The intermediate code and the symbol array are tested and function properly.
+2. test2.stl: Contains different types of statements such as incase, forcase, loop, if and while statements. C code is tested and function properly.
+3. test3.stl: Extended version of test2.stl. 
+4. test4.stl: Contains functions' declarations and calls. The intermediate code and the symbol array are tested and function properly. There is a function with no arguments, a nested function and functions with various arguments (they vary in size and mode).
+5. test5.stl: Modified version of the given test for the production of C file. We have added print statements and assignment statements with negative operands to detect the expected result.
+
+Notes: 
+1. Test filenames and the corresponding program names can be either the same or different. Compiler works fine under both circumstances.
+2. Symbol array is printed before and exactly after erasure of the given scope.
