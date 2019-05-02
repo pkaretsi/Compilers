@@ -1,0 +1,90 @@
+//Foteini Karetsi, A.M. 2990, username: cse52990
+//Eleftheria Bella, A.M. 3039, username: cse53039
+
+program test3
+	declare x,y,z,w,g,ab;
+	declare abcdefghijklmnopqrstuvwxyz1234567;
+	
+	z:=0;
+	y:=4;
+	dowhile
+		if (y>=6) then
+			z := y+2
+		endif;
+		print z;
+		y:=y+1
+	enddowhile (y>12);
+	
+	loop
+		input w;
+		if(not [w>=5]) then
+			loop
+				if(w=3) then
+					abc := 3;
+					exit
+				endif;
+				z :=123;
+				w := w-1
+			endloop;
+			print z;
+			exit
+		endif;
+		ab := 3
+	endloop;
+	
+	incase
+		when (x+y = z+w): print x+y
+		when (z<3) : print z; z := 5
+	endincase;
+	print x;
+	forcase
+		when (ab<>3): print ab
+		when ([y>5 and z>10 or ab=3]): print y+z
+		default: print x enddefault
+	endforcase
+	
+	print x;
+	z:= ab + 3;
+	if (z>4) then
+		print z*2;
+		forcase
+			when (z<25): print z+2
+			when (z>10): print z+z
+			default: print z enddefault
+		endforcase;
+		z := z+1
+	else
+		w:=0;
+		//added triple loop with nested while loop
+		loop
+			if(not [w>=2]) then
+				loop
+					if(x<>3) then
+						x := 3;
+						exit
+					endif;				
+					loop
+						w:=10;
+						while (w > 3 and w < 20)
+							print w+2;
+							print x*3;
+							w := w + 1 
+						endwhile;
+						z :=123;
+						exit
+					endloop;
+				endloop;
+				print z;
+				exit
+			endif;
+		endloop;
+	endif;
+			
+	x :=x+8;
+	while (x>10 and x <20)
+		incase
+			when (x < 20): print x; x := x + 1
+			when (x > 20): print x*2; x := x - 1
+		endincase
+	endwhile
+endprogram

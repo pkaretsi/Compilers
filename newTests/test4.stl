@@ -1,0 +1,40 @@
+//Foteini Karetsi, A.M. 2990, username: cse52990
+//Eleftheria Bella, A.M. 3039, username: cse53039
+
+program test4
+	declare x,y,z,w,g,ab;
+	
+	function zeta() 
+		print z;
+		return 0
+	endfunction
+	
+	function a(in x, inandout w)
+		function b(inout z)
+			z:=z+3;
+			if (z>4) then
+				print z*2;
+				z := z+1
+			else
+				x := zeta();
+				z:=0
+			endif;
+			return z
+		endfunction
+		
+		x := 18;
+		w := 1;
+		while (x>10)
+			x := b(inout w)
+		endwhile;
+		print x;
+		return x
+	endfunction
+	
+	ab := zeta();
+	print ab;
+	x := 5;
+	y := 3;
+	w := a(in x, inandout y);
+	print w
+endprogram

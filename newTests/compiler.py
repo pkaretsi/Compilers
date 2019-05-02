@@ -1,6 +1,3 @@
-#ATTENTION: move it here for running tests correctly!
-
-
 #Foteini Karetsi, A.M. 2990, username: cse52990
 #Eleftheria Bella, A.M. 3039, username: cse53039
 
@@ -43,26 +40,25 @@ binded_words = ['program', 'endprogram', 'declare', 'if', 'then', 'else', 'endif
 IDTK = 'id' #tokenID for identifiers
 endOfFile = False #True when reached EOF
 
-#intermediate code globals
+#-----Intermediate code global variables-----#
 quad_program_list = dict() #program's quadruples, dictionary where key=label, value=list of quadruple's operators
 total_quads = 0
 temp_value = 0
 programName = ""
 exitloop = [] #keeps pointer to the quadruple of every exit command, any time you end a loop statement pop last item and backpatch it with the next quad
 loopCounterList = []
-#testing loop
 findLoop = [] #stores first quadruple of every loop statement, return to this quad every time loop starts all over again
 checkIfExit = [] #every loop statement sets a temp variable to 0 and if we find an exit statement, this variable becomes 1, when ending statements of loop check if
                  #the corresponding temp variable has changed and if not start from the beginning
 allFunctions = [] #stores all function names found in program - use this to avoid using them as variables' names in C file
 bindedCharacters = ['CV', 'CP', 'REF', 'RET', '_']
 
-#symbol array globals
-symbolList = []
+#-----Symbol Array global variables-----#
+symbolList = [] #stores scopes of program
 mainFramelength = 0
-enableReturnSearch = False
+enableReturnSearch = False #detects return statements outside functions
 
-#display errors and terminate
+#Display errors and terminate
 def displayError(msg): #Prints error message and terminates compiler
     print('Error at line '+str(fline)+ '\n' +msg)
     sys.exit()
@@ -93,7 +89,7 @@ class Function(Entity):
         self.returnType = "int"
         self.startQuad = -1
         self.argList = []
-        self.framelength = 12 #for now
+        self.framelength = 12
 
     def printEntity(self):
         res = "{" + super().printEntity() + ", Return Type: " + self.returnType + ", StartQuad: " + str(self.startQuad) + ", "
@@ -170,7 +166,6 @@ def deleteScope():
     del symbolList[-1]
 
 def searchEntity(name, nl): #search specific entity starting from a nesting level nl and going backwards
-    #print("Search " + name + " " + str(nl)) ###
     pos = -1
     for scope in symbolList:
         if scope.nestingLevel == nl:
@@ -192,33 +187,17 @@ def countFunctions(scope): #auxiliary function to compute right offset, counts n
             counter += 1
     return counter
 
-def setOffset(scope):
+def setOffset(scope): 
     functions = countFunctions(scope)
     offset = (len(scope.scopelist)-functions) * 4 + 12
     return offset
 
-def searchVariableOrParameter(sc):
+def searchVariableOrParameter(sc): 
     if len(sc.scopelist) != 0: 
         for i in range(len(sc.scopelist)-1, -1, -1):
             if sc.scopelist[i].entity_type == "variable" or sc.scopelist[i].entity_type == "parameter":
                 return sc.scopelist[i]
     return None
-    
-    if len(sc.scopelist) != 0: #maybe not here but in searchEntity!
-        for i in range(len(sc.scopelist)-1, -1, -1):
-            if sc.scopelist[i].entity_type == "variable":
-                v = sc.scopelist[i]
-                break
-        if v != None:
-            if name == programName:
-                mainFramelength = v.offset + 4
-                symbolList[-1].framelength = mainFramelength
-            else:
-                f.framelength = v.offset + 4 #sets function's framelength when function ends
-                symbolList[-1].framelength = f.framelength
-    else:
-        f.framelength = 12 #sets function's framelength when function ends
-        symbolList[-1].framelength = f.framelength
 
 #-----Intermediate code functions-----#
 def next_quad(): #returns the number of the next quadruple that will be produced 
@@ -235,7 +214,6 @@ def newTemp():
     temp_value += 1
     offset = setOffset(symbolList[-1])
     createVariable(tempvar, "variable", offset, symbolList[-1].scopelist)
-    #printSymbolList()
     return tempvar
 
 def emptylist():
@@ -267,7 +245,6 @@ def lex():
     while(state!=100):
         my_pos = f.tell() #save current position, needed later when have to return back
         ch = f.read(1)
-        #print('Buf', f.tell(), 'Ch', ch)
         buffer.append(ch)
         if(state==0 and ch in whiteletters):
             del buffer[len(buffer)-1] #ignore whitespaces
@@ -421,7 +398,6 @@ def lex():
 #-----Definition of Starlet's grammar rules-----#   
 def program():
     createScope(0)
-    #printSymbolList()
     lex() #lexical analyzer - first rule, need to "fill" token & tokenID
     if(tokenID == 'program'):
         lex()
@@ -442,7 +418,6 @@ def program():
 def block(name, returnList = []):
     global mainFramelength, enableReturnSearch
     f = None
-    v = None
     declarations()
     subprograms()
     if name != programName:
@@ -455,7 +430,7 @@ def block(name, returnList = []):
     if(name == programName):
         gen_quad("halt")
     gen_quad("end_block", name)
-    if len(symbolList[-1].scopelist) != 0: #maybe not here but in searchEntity!
+    if len(symbolList[-1].scopelist) != 0:
         v = searchVariableOrParameter(symbolList[-1])
         if v != None:
             if name == programName:
@@ -467,7 +442,6 @@ def block(name, returnList = []):
     else:
         f.framelength = 12 #sets function's framelength when function ends
         symbolList[-1].framelength = f.framelength
-    #maybe some prints should be erased!
     print("BEFORE ERASURE")
     printSymbolList()
     deleteScope()
@@ -495,14 +469,12 @@ def varlist():
     if(tokenID == IDTK):
         offset = setOffset(symbolList[-1])
         createVariable(token, "variable", offset, symbolList[-1].scopelist)
-        #printSymbolList()
         lex()
         while(tokenID == ','):
             lex()
             if(tokenID == IDTK):
                 offset = setOffset(symbolList[-1])
                 createVariable(token, "variable", offset, symbolList[-1].scopelist)
-                #printSymbolList()
                 lex()
             else:
                 displayError('Error5: Expecting identifier after comma. Terminating program')
@@ -527,7 +499,6 @@ def subprogram():
         if flag >= 1:
             displayError('Cannot accept the same name for variables/functions in the same scope.')
         createScope(symbolList[-1].nestingLevel +1)
-        #printSymbolList()
         lex()
         funcbody(funcName, returnList)
         if len(returnList) == 0:
@@ -568,7 +539,6 @@ def formalparitem():
         if(tokenID == IDTK):
             offset = setOffset(symbolList[-1])
             createParameter(token, "parameter", offset, arg.argMode, symbolList[-1].scopelist)
-            #printSymbolList()
             lex()
         else:
             displayError('Error10: Expecting variable\'s identifier after in, or there is a non accepted identifier. Terminating program')
@@ -578,7 +548,6 @@ def formalparitem():
         if(tokenID == IDTK):
             offset = setOffset(symbolList[-1])
             createParameter(token, "parameter", offset, arg.argMode, symbolList[-1].scopelist)
-            #printSymbolList()
             lex()
         else:
             displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
@@ -588,7 +557,6 @@ def formalparitem():
         if(tokenID == IDTK):
             offset = setOffset(symbolList[-1])
             createParameter(token, "parameter", offset, arg.argMode, symbolList[-1].scopelist)
-            #printSymbolList()
             lex()
         else:
             displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
@@ -709,13 +677,12 @@ def do_while_stat():
         displayError('Error18: Expecting binded word "enddowhile", instead of '+ tokenID+'.\nTerminating program')
     
 def loop_stat():
-    loopCounterList.append(next_quad()) #do not know what to append
+    loopCounterList.append(next_quad())
     lex()
     t = newTemp()
     checkIfExit.append(t)
     gen_quad(":=", "0", "_", checkIfExit[-1])
-    findLoop.append(next_quad()) #should point to first quadruple of every loop statement
-    #print(findLoop) 
+    findLoop.append(next_quad())
     statements()
     if(tokenID == 'endloop'):
         lex()
@@ -739,10 +706,8 @@ def exit_stat():
 
 def forcase_stat():
     lex()
-    #-----p1-----#
     forcase_quad = next_quad()
     exitList = emptylist()
-    #------------#
     while(tokenID == 'when'):
         lex()
         if(tokenID == '('):
@@ -751,17 +716,13 @@ def forcase_stat():
             if(tokenID == ')'):
                 lex()
                 if(tokenID == ':'):
-                    #-----p2-----#
                     backpatch(cond_true, next_quad())
-                    #------------#
                     lex()
                     statements()
-                    #-----p3-----#
                     forcaseList = makelist(next_quad())
                     gen_quad("jump")
                     backpatch(cond_false, next_quad())
                     exitList = merge(exitList, forcaseList)
-                    #------------#
                 else:
                     displayError('Error20: Expecting ":", instead of '+ tokenID+'.\nTerminating program')
             else:
@@ -773,10 +734,8 @@ def forcase_stat():
         if(tokenID == ':'):
             lex()
             statements()
-            #-----p4-----#
             gen_quad("jump", "_", "_", forcase_quad)
             backpatch(exitList, next_quad())
-            #------------#
             if(tokenID == 'enddefault'):
                 lex()
                 if(tokenID == 'endforcase'):
@@ -851,8 +810,6 @@ def actualpars(argList):
     elif len(argList) > len(aList):
         displayError('This function accepts ' + str(len(argList)) + ' arguments. You inserted ' + str(len(aList)))
     if argList != aList :
-        print(argList)
-        print(aList)
         displayError('Arguments assigned are different than the ones that the function is defined with.')
     if(tokenID == ')'):
         lex()
@@ -876,7 +833,7 @@ def actualparitem():
         type_result = tokenID
         lex()
         actualparitem_result = expression()
-        gen_quad("par", actualparitem_result, "CV") #create quadruples here when having parameters
+        gen_quad("par", actualparitem_result, "CV")
     elif(tokenID == 'inout'):
         type_result = tokenID
         lex()
@@ -995,7 +952,6 @@ def factor():
         else:
             displayError('Error8: Expecting ")", instead of '+ tokenID+'.\nTerminating program')
     elif(tokenID == IDTK):
-        ########## if id without parameters it is a variable, pass it to next level
         factor_result = token
         lex()
         entity = searchEntity(factor_result, symbolList[-1].nestingLevel)
@@ -1078,8 +1034,7 @@ def checkIfNegative(variables, s):
             variables.append(s)
 
 def produceCFile(name):
-    global programName #already set
-    #should correct blocks for functions
+    global programName
     #if some variables are declared in declarations section but not used afterwards, they will not
     #be declared in C code, because they are not useful. However, symbol array contains them normally.
     variables = []
@@ -1092,18 +1047,16 @@ def produceCFile(name):
         checkIfNegative(variables, quad_program_list[q][1])
         checkIfNegative(variables, quad_program_list[q][2])
         checkIfNegative(variables, quad_program_list[q][3])
-    #print(blockNames)
-    for f in allFunctions: #bad complexity :(
+    for f in allFunctions:
         if f in variables:
             variables.remove(f)
     for c in bindedCharacters:
         if c in variables:
             variables.remove(c)
-    #print(variables)
     cfile = open(name + '.c', 'w')
     cfile.write("#include <stdio.h>\n\n")
     for i in quad_program_list:
-        if (quad_program_list[i][0] == "begin_block") and (quad_program_list[i][1] == programName) : #filename should be the same as program name? - both can be used
+        if (quad_program_list[i][0] == "begin_block") and (quad_program_list[i][1] == programName): 
             cfile.write("int main()\n{\n")
             cfile.write("\tint ")
             for var in range(len(variables)-1):
