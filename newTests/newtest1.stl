@@ -1,0 +1,59 @@
+//Symbol array, intermediate code, C code OK
+
+program newtest1
+	declare a,b,c,d,e;
+	declare x,y,z,w;
+
+	z:=0;
+	w:=4;
+	dowhile
+		if (w>=6) then
+			z := w+2
+		endif;
+		print w;
+		w := w+1;
+		print z
+	enddowhile (w>12);
+	
+	loop
+		input d;
+		if(d>=5) then
+			loop
+				if(w=11) then
+					loop
+						a := 3;
+						exit
+					endloop;
+					x := w + 1;
+					print x;
+					exit
+				endif;
+				w := w - 1
+			endloop;
+			print d;
+			if(x>w) then
+				exit
+			endif;
+		endif;
+		c := d;
+		print c
+	endloop;
+		
+	x:=3;
+	y:=7;
+	print x;
+	incase
+		when (x+y = z+w): print x+y
+		when (c < 5) : print c;
+						c:= c+1
+	endincase;
+	print z;
+	forcase
+		when (not [w=11]): print w
+		when ([y>5 and z>10 or w=11]): print y + z + w 
+		default: print x enddefault
+	endforcase
+endprogram	
+		
+		
+	
