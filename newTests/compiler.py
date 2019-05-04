@@ -112,7 +112,7 @@ class Scope:
 
     def __init__(self, nestingLevel):
         self.nestingLevel = nestingLevel
-        self.framelength = 0
+        self.framelength = 12
         self.scopelist = []
 
     def printScope(self):
@@ -178,19 +178,7 @@ def searchEntity(name, nl): #search specific entity starting from a nesting leve
             for e in symbolList[s].scopelist:
                 if e.name == name:
                     return e
-        displayError("Entity not defined")
-
-def countFunctions(scope): #auxiliary function to compute right offset, counts number of functions in a scope
-    counter = 0
-    for e in scope.scopelist:
-        if(e.entity_type == 'function'):
-            counter += 1
-    return counter
-
-def setOffset(scope): 
-    functions = countFunctions(scope)
-    offset = (len(scope.scopelist)-functions) * 4 + 12
-    return offset
+        displayError("Entity " + name + " is not defined.")
 
 def searchVariableOrParameter(sc): 
     if len(sc.scopelist) != 0: 
@@ -212,8 +200,9 @@ def newTemp():
     global temp_value
     tempvar = 'T_'+str(temp_value)
     temp_value += 1
-    offset = setOffset(symbolList[-1])
+    offset = symbolList[-1].framelength
     createVariable(tempvar, "variable", offset, symbolList[-1].scopelist)
+    symbolList[-1].framelength = symbolList[-1].scopelist[-1].offset + 4
     return tempvar
 
 def emptylist():
@@ -463,21 +452,23 @@ def declarations():
         if(tokenID == ';'):
             lex()
         else:
-            displayError('Error4: Expecting ";", or "'+ tokenID+'" is not acceptable.\nTerminating program')
+            displayError('Error4: Expecting ";", or token "'+ tokenID+'" is not acceptable.\nTerminating program')
 
 def varlist():
     if(tokenID == IDTK):
-        offset = setOffset(symbolList[-1])
+        offset = symbolList[-1].framelength
         createVariable(token, "variable", offset, symbolList[-1].scopelist)
+        symbolList[-1].framelength = symbolList[-1].scopelist[-1].offset + 4
         lex()
         while(tokenID == ','):
             lex()
             if(tokenID == IDTK):
-                offset = setOffset(symbolList[-1])
+                offset = symbolList[-1].framelength
                 createVariable(token, "variable", offset, symbolList[-1].scopelist)
+                symbolList[-1].framelength = symbolList[-1].scopelist[-1].offset + 4
                 lex()
             else:
-                displayError('Error5: Expecting identifier after comma. Terminating program')
+                displayError('Error5: Expecting identifier after comma not ' + token + '. Terminating program')
 
 def subprograms():
     while(tokenID=='function'):
@@ -537,8 +528,9 @@ def formalparitem():
         arg = createArgument(token, symbolList[-2].scopelist[-1].argList)
         lex()
         if(tokenID == IDTK):
-            offset = setOffset(symbolList[-1])
+            offset = symbolList[-1].framelength
             createParameter(token, "parameter", offset, arg.argMode, symbolList[-1].scopelist)
+            symbolList[-1].framelength = symbolList[-1].scopelist[-1].offset + 4
             lex()
         else:
             displayError('Error10: Expecting variable\'s identifier after in, or there is a non accepted identifier. Terminating program')
@@ -546,8 +538,9 @@ def formalparitem():
         arg = createArgument(token, symbolList[-2].scopelist[-1].argList)
         lex()
         if(tokenID == IDTK):
-            offset = setOffset(symbolList[-1])
+            offset = symbolList[-1].framelength
             createParameter(token, "parameter", offset, arg.argMode, symbolList[-1].scopelist)
+            symbolList[-1].framelength = symbolList[-1].scopelist[-1].offset + 4
             lex()
         else:
             displayError('Error11: Expecting variable\'s identifier after inout, or there is a non accepted identifier. Terminating program')
@@ -555,8 +548,9 @@ def formalparitem():
         arg = createArgument(token, symbolList[-2].scopelist[-1].argList)
         lex()
         if(tokenID == IDTK):
-            offset = setOffset(symbolList[-1])
+            offset = symbolList[-1].framelength
             createParameter(token, "parameter", offset, arg.argMode, symbolList[-1].scopelist)
+            symbolList[-1].framelength = symbolList[-1].scopelist[-1].offset + 4
             lex()
         else:
             displayError('Error12: Expecting variable\'s identifier after inandout, or there is a non accepted identifier. Terminating program')
@@ -567,31 +561,47 @@ def statements(returnList = []):
     statement(returnList)
     while(tokenID == ';'):
         lex()
-        statement(returnList)
+        emptys = statement(returnList)
+        if(emptys == 1):
+            displayError('Redundant character ; after last executed statement' + '.\nTerminating program.')
 
 def statement(returnList = []): #look forward to predict next function
+    #detect empty statement, if 1 and there is ; in the last statement, display error
+    empty_stat = 1
     if(tokenID == IDTK): #assignment-statement, begin with variable
         assignment_stat()
+        empty_stat = 0
     if(tokenID == 'if'):
         if_stat()
+        empty_stat = 0
     if(tokenID == 'while'):
         while_stat()
+        empty_stat = 0
     if(tokenID == 'dowhile'):
         do_while_stat()
+        empty_stat = 0
     if(tokenID == 'loop'):
         loop_stat()
+        empty_stat = 0
     if(tokenID == 'exit'):
         exit_stat()
+        empty_stat = 0
     if(tokenID == 'forcase'):
         forcase_stat()
+        empty_stat = 0
     if(tokenID == 'incase'):
         incase_stat()
+        empty_stat = 0
     if(tokenID == 'return'):
         return_stat(returnList)
+        empty_stat = 0
     if(tokenID == 'input'):
         input_stat()
+        empty_stat = 0
     if(tokenID == 'print'):
         print_stat()
+        empty_stat = 0
+    return empty_stat
 
 def assignment_stat():
     idName = token

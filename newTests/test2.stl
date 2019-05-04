@@ -34,7 +34,7 @@ program test2
 			print d;
 			if(x>w) then
 				exit
-			endif;
+			endif
 		endif;
 		c := d;
 		print c
