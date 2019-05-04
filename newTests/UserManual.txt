@@ -6,7 +6,7 @@ python3 compiler.py <testfile>
 
 Along with the compiler we have submitted the following test files:
 1. test1.stl: Contains functions' declarations and calls as well as different types of statements. The intermediate code and the symbol array are tested and function properly.
-2. test2.stl: Contains different types of statements such as incase, forcase, loop, if and while statements. C code is tested and function properly.
+2. test2.stl: Contains different types of statements such as incase, forcase, loop, if and while statements. C code is tested and functions properly.
 3. test3.stl: Extended version of test2.stl. 
 4. test4.stl: Contains functions' declarations and calls. The intermediate code and the symbol array are tested and function properly. There is a function with no arguments, a nested function and functions with various arguments (they vary in size and mode).
 5. test5.stl: Modified version of the given test for the production of C file. We have added print statements and assignment statements with negative operands to detect the expected result.

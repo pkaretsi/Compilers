@@ -72,12 +72,12 @@ program test3
 						endwhile;
 						z :=123;
 						exit
-					endloop;
+					endloop
 				endloop;
 				print z;
 				exit
-			endif;
-		endloop;
+			endif
+		endloop
 	endif;
 			
 	x :=x+8;

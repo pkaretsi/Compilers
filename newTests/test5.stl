@@ -8,10 +8,10 @@ program test5
 	b:=0;
     while (a+b<1 and b<5)
 	    if (t=1) then
-			c:=2;
+			c:=2
 	    else 
 			if (t=2) then
-				c:=4;
+				c:=4
 			else c:=0
 			endif
 		endif;
