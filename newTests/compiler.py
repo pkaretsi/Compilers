@@ -165,20 +165,21 @@ def createScope(nestingLevel):
 def deleteScope():
     del symbolList[-1]
 
-def searchEntity(name, nl): #search specific entity starting from a nesting level nl and going backwards
-    pos = -1
+def searchEntity(name):
+#def searchEntity(name, nl): #search specific entity starting from a nesting level nl and going backwards
+    '''pos = -1
     for scope in symbolList:
         if scope.nestingLevel == nl:
             pos = symbolList.index(scope)
             break
     if pos == -1:
         displayError("Wrong nesting level")
-    else:
-        for s in range(pos, -1 ,-1):
-            for e in symbolList[s].scopelist:
-                if e.name == name:
-                    return e
-        displayError("Entity " + name + " is not defined.")
+    else:'''
+    for s in range(len(symbolList)-1, -1 ,-1):
+        for e in symbolList[s].scopelist:
+            if e.name == name:
+                return e, symbolList[s].nestingLevel
+    displayError("Entity " + name + " is not defined.")
 
 def searchVariableOrParameter(sc): 
     if len(sc.scopelist) != 0: 
@@ -186,6 +187,78 @@ def searchVariableOrParameter(sc):
             if sc.scopelist[i].entity_type == "variable" or sc.scopelist[i].entity_type == "parameter":
                 return sc.scopelist[i]
     return None
+
+
+#-----Final code functions-----#
+def gnlvcode(v):
+    global finalf
+    entity, nl = searchEntity(v)
+    n = symbolList[-1].nestingLevel - nl - 1
+    finalf.write("    lw      $t0, -4($sp)\n")
+    for i in range(n):
+        finalf.write("    lw      $t0, -4($t0)\n")
+    finalf.write("    addi      $t0, $t0, -" + entity.offset + "\n")
+
+def loadvr(v, r):
+    global finalf
+    currentnl = symbolList[-1].nestingLevel
+    entity = None
+    nl = -1
+    if not v.isdigit():
+        entity, nl = searchEntity(v)
+    if v.isdigit():
+        finalf.write("    li      $t" + r + ", " + v + "\n")
+    elif nl == 0: #nl=0 equals to main function --> global variable
+        finalf.write("    lw      $t" + r + ", -" + entity.offset + "($s0)\n")
+    elif nl == currentnl and (entity.entity_type == "variable"
+                              or (entity.entity_type == "parameter" and entity.parMode == "in")): ####local var, temp var and formal par passed by value
+        finalf.write("    lw      $t" + r + ", -" + entity.offset + "($sp)\n")
+    elif nl == currentnl and (entity.entity_type == "parameter" and (entity.parMode == "inout" or entity.parMode == "inandout")): #formal par passed by reference/copy
+        finalf.write("    lw      $t0, -" + entity.offset + "($sp)\n")
+        finalf.write("    lw      $t" + r + ", ($t0)\n")
+    '''elif nl == currentnl and (entity.entity_type == "parameter" and entity.parMode == "inandout"): #formal par passed by copy
+        finalf.write("    lw      $t0, -" + entity.offset + "($sp)\n")
+        finalf.write("    lw      $t" + r + ", ($t0)\n")'''
+    elif nl < currentnl and (entity.entity_type == "variable"
+                              or (entity.entity_type == "parameter" and entity.parMode == "in")): #case 5
+        gnlvcode(v)
+        finalf.write("    lw      $t" + r + ", ($t0)\n")
+    elif nl < currentnl and (entity.entity_type == "parameter" and (entity.parMode == "inout" or entity.parMode == "inandout")): #case 6
+        gnlvcode(v)
+        finalf.write("    lw      $t0, ($t0)\n")
+        finalf.write("    lw      $t" + r + ", ($t0)\n")
+    else:
+        displayError("Something went wrong at loading value to the register.")
+
+
+def storerv(r, v):
+    global finalf
+    currentnl = symbolList[-1].nestingLevel
+    entity, nl = searchEntity(v)
+    if nl == 0: #global var
+        finalf.write("    sw      $t" + r + ", -" + entity.offset + "($s0)\n")
+    elif nl == currentnl and (entity.entity_type == "variable"
+                              or (entity.entity_type == "parameter" and entity.parMode == "in")): ####local var, temp var and formal par passed by value
+        finalf.write("    sw      $t" + r + ", -" + entity.offset + "($sp)\n")
+    elif nl == currentnl and entity.entity_type == "parameter" and entity.parMode == "inout": #formal par passed by reference
+        finalf.write("    lw      $t0, -" + entity.offset + "($sp)\n")
+        finalf.write("    sw      $t" + r + ",($t0)\n")
+    elif nl == currentnl and entity.entity_type == "parameter" and entity.parMode == "inandout": #formal par passed by copy
+        ###########
+    elif nl < currentnl and (entity.entity_type == "variable"
+                              or (entity.entity_type == "parameter" and entity.parMode == "in")):
+        gnlvcode(v)
+        finalf.write("    sw      $t" + r + ",($t0)\n")
+    elif nl < currentnl and entity.entity_type == "parameter" and entity.parMode == "inout":
+        gnlvcode(v)
+        finalf.write("    lw      $t0, ($t0)\n")
+        finalf.write("    sw      $t" + r + ",($t0)\n")
+    elif nl < currentnl and entity.entity_type == "parameter" and entity.parMode == "inandout":
+        ############
+    else:
+        displayError("Something went wrong at storing value.")
+        
+
 
 #-----Intermediate code functions-----#
 def next_quad(): #returns the number of the next quadruple that will be produced 
@@ -410,7 +483,8 @@ def block(name, returnList = []):
     declarations()
     subprograms()
     if name != programName:
-        f = searchEntity(name, symbolList[-1].nestingLevel)
+        f, nl = searchEntity(name)
+        #f, nl = searchEntity(name, symbolList[-1].nestingLevel)
         f.startQuad = next_quad()
     gen_quad("begin_block", name)
     if name == programName:
@@ -848,7 +922,7 @@ def actualparitem():
         type_result = tokenID
         lex()
         if(tokenID == IDTK):
-            actualparitem_result =token 
+            actualparitem_result = token 
             lex()
             gen_quad("par", actualparitem_result, "REF")
         else:
@@ -964,7 +1038,8 @@ def factor():
     elif(tokenID == IDTK):
         factor_result = token
         lex()
-        entity = searchEntity(factor_result, symbolList[-1].nestingLevel)
+        entity, nl = searchEntity(factor_result)
+        #entity, nl = searchEntity(factor_result, symbolList[-1].nestingLevel)
         parList = []
         if entity.entity_type == 'function':
             parList = []
@@ -1135,14 +1210,14 @@ def produceCFile(name):
 if(len(sys.argv)<2):
     print("Error: Expecting file name.")
     sys.exit()
-f = open(sys.argv[1], 'r') #read file name as command line argument 
+tokens = sys.argv[1].split(".") #keep file name without the ending, to create intermediate code file and C file
+f = open(sys.argv[1], 'r') #read file name as command line argument
+finalf = open(tokens[0] + '.asm', 'w')
 program()
 if(not (endOfFile or tokenID=='EOF')):
     print('Syntax error: Cannot recognize characters after "endprogram".')
 else:
     print('EOF: Compilation ended successfully!');
-
-tokens = sys.argv[1].split(".") #keep file name without the ending, to create intermediate code file and C file
 with open(tokens[0] + ".int", 'w') as interFile:
     for l in quad_program_list:
         interFile.write(str(l)+' '+str(quad_program_list[l])+' \n')
