@@ -194,10 +194,10 @@ def gnlvcode(v):
     global finalf
     entity, nl = searchEntity(v)
     n = symbolList[-1].nestingLevel - nl - 1
-    finalf.write("    lw      $t0, -4($sp)\n")
+    finalf.write("    lw  $t0, -4($sp)\n")
     for i in range(n):
-        finalf.write("    lw      $t0, -4($t0)\n")
-    finalf.write("    addi      $t0, $t0, -" + entity.offset + "\n")
+        finalf.write("    lw  $t0, -4($t0)\n")
+    finalf.write("    addi  $t0, $t0, -" + entity.offset + "\n")
 
 def loadvr(v, r):
     global finalf
@@ -207,26 +207,30 @@ def loadvr(v, r):
     if not v.isdigit():
         entity, nl = searchEntity(v)
     if v.isdigit():
-        finalf.write("    li      $t" + r + ", " + v + "\n")
+        finalf.write("    li  $t" + r + ", " + v + "\n")
     elif nl == 0: #nl=0 equals to main function --> global variable
-        finalf.write("    lw      $t" + r + ", -" + entity.offset + "($s0)\n")
+        finalf.write("    lw  $t" + r + ", -" + str(entity.offset) + "($s0)\n")
     elif nl == currentnl and (entity.entity_type == "variable"
                               or (entity.entity_type == "parameter" and entity.parMode == "in")): ####local var, temp var and formal par passed by value
-        finalf.write("    lw      $t" + r + ", -" + entity.offset + "($sp)\n")
-    elif nl == currentnl and (entity.entity_type == "parameter" and (entity.parMode == "inout" or entity.parMode == "inandout")): #formal par passed by reference/copy
-        finalf.write("    lw      $t0, -" + entity.offset + "($sp)\n")
-        finalf.write("    lw      $t" + r + ", ($t0)\n")
-    '''elif nl == currentnl and (entity.entity_type == "parameter" and entity.parMode == "inandout"): #formal par passed by copy
-        finalf.write("    lw      $t0, -" + entity.offset + "($sp)\n")
-        finalf.write("    lw      $t" + r + ", ($t0)\n")'''
+        finalf.write("    lw  $t" + r + ", -" + str(entity.offset) + "($sp)\n")
+    elif nl == currentnl and (entity.entity_type == "parameter" and entity.parMode == "inandout") :
+        finalf.write("    lw  $t" + r + ", -" + str(entity.offset) + "($sp)\n")
+        ######
+    elif nl == currentnl and (entity.entity_type == "parameter" and entity.parMode == "inout") : #formal par passed by reference/copy
+        finalf.write("    lw  $t0, -" + str(entity.offset) + "($sp)\n")
+        finalf.write("    lw  $t" + r + ", ($t0)\n")
+    elif nl < currentnl and (entity.entity_type == "parameter" and entity.parMode == "inandout") :
+        gnlvcode(v)
+        finalf.write("    lw  $t" + r + ", ($t0)\n")
+        #####
     elif nl < currentnl and (entity.entity_type == "variable"
                               or (entity.entity_type == "parameter" and entity.parMode == "in")): #case 5
         gnlvcode(v)
-        finalf.write("    lw      $t" + r + ", ($t0)\n")
-    elif nl < currentnl and (entity.entity_type == "parameter" and (entity.parMode == "inout" or entity.parMode == "inandout")): #case 6
+        finalf.write("    lw  $t" + r + ", ($t0)\n")
+    elif nl < currentnl and (entity.entity_type == "parameter" and entity.parMode == "inout"): #case 6
         gnlvcode(v)
-        finalf.write("    lw      $t0, ($t0)\n")
-        finalf.write("    lw      $t" + r + ", ($t0)\n")
+        finalf.write("    lw  $t0, ($t0)\n")
+        finalf.write("    lw  $t" + r + ", ($t0)\n")
     else:
         displayError("Something went wrong at loading value to the register.")
 
@@ -236,29 +240,180 @@ def storerv(r, v):
     currentnl = symbolList[-1].nestingLevel
     entity, nl = searchEntity(v)
     if nl == 0: #global var
-        finalf.write("    sw      $t" + r + ", -" + entity.offset + "($s0)\n")
+        finalf.write("    sw  $t" + r + ", -" + str(entity.offset) + "($s0)\n")
     elif nl == currentnl and (entity.entity_type == "variable"
-                              or (entity.entity_type == "parameter" and entity.parMode == "in")): ####local var, temp var and formal par passed by value
-        finalf.write("    sw      $t" + r + ", -" + entity.offset + "($sp)\n")
+                              or (entity.entity_type == "parameter" and (entity.parMode == "in" or entity.parMode == "inandout"))): ####local var, temp var and formal par passed by value
+        finalf.write("    sw  $t" + r + ", -" + str(entity.offset) + "($sp)\n")
     elif nl == currentnl and entity.entity_type == "parameter" and entity.parMode == "inout": #formal par passed by reference
-        finalf.write("    lw      $t0, -" + entity.offset + "($sp)\n")
-        finalf.write("    sw      $t" + r + ",($t0)\n")
-    elif nl == currentnl and entity.entity_type == "parameter" and entity.parMode == "inandout": #formal par passed by copy
-        ###########
+        finalf.write("    lw  $t0, -" + str(entity.offset) + "($sp)\n")
+        finalf.write("    sw  $t" + r + ",($t0)\n")
     elif nl < currentnl and (entity.entity_type == "variable"
-                              or (entity.entity_type == "parameter" and entity.parMode == "in")):
+                              or (entity.entity_type == "parameter" and (entity.parMode == "in" or entity.parMode == "inandout"))):
         gnlvcode(v)
-        finalf.write("    sw      $t" + r + ",($t0)\n")
+        finalf.write("    sw  $t" + r + ",($t0)\n")
     elif nl < currentnl and entity.entity_type == "parameter" and entity.parMode == "inout":
         gnlvcode(v)
-        finalf.write("    lw      $t0, ($t0)\n")
-        finalf.write("    sw      $t" + r + ",($t0)\n")
-    elif nl < currentnl and entity.entity_type == "parameter" and entity.parMode == "inandout":
-        ############
+        finalf.write("    lw  $t0, ($t0)\n")
+        finalf.write("    sw  $t" + r + ",($t0)\n")
     else:
         displayError("Something went wrong at storing value.")
-        
 
+def producemipsfile(entity):
+    global finalf
+    counter = 0
+    sq = int(entity.startQuad)
+    while sq > 0:
+        if quad_program_list[sq][0] == 'begin_block' and quad_program_list[sq][1] != programName:
+            finalf.write("L" + str(sq) + ":\n    sw  $ra, ($sp)\n")
+        elif quad_program_list[sq][0] == 'begin_block' and quad_program_list[sq][1] == programName:
+            ####
+            finalf.write("Lmain:\n")
+        elif quad_program_list[sq][0] == 'end_block' and quad_program_list[sq][1] != programName:
+            finalf.write("L" + str(sq) + ":\n    lw  $ra, ($sp)\n")
+            finalf.write("    jr  $ra\n")
+            break
+            ####inandout shit
+        elif quad_program_list[sq][0] == 'end_block' and quad_program_list[sq][1] == programName:
+            break
+            ####
+        elif quad_program_list[sq][0] == ":=":
+            finalf.write("L" + str(sq) + ":\n")
+            loadvr(quad_program_list[sq][1], "1")
+            storerv("1", quad_program_list[sq][3])
+        elif quad_program_list[sq][0] == "+":
+            finalf.write("L" + str(sq) + ":\n")
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("    add  $t1, $t1, $t2\n")
+            storerv("1", quad_program_list[sq][3])
+        elif quad_program_list[sq][0] == "-":
+            finalf.write("L" + str(sq) + ":\n")
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("    sub  $t1, $t1, $t2\n")
+            storerv("1", quad_program_list[sq][3])
+        elif quad_program_list[sq][0] == "*":
+            finalf.write("L" + str(sq) + ":\n")
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("    mul  $t1, $t1, $t2\n")
+            storerv("1", quad_program_list[sq][3])
+        elif quad_program_list[sq][0] == "/":
+            finalf.write("L" + str(sq) + ":\n")
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("    div  $t1, $t1, $t2\n")
+            storerv("1", quad_program_list[sq][3])
+        elif quad_program_list[sq][0] == "<=":
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("L" + str(sq) + ":\n")
+            finalf.write("    ble  $t1, $t2, " + quad_program_list[sq][3] + "\n")
+        elif quad_program_list[sq][0] == ">=":
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("L" + str(sq) + ":\n")
+            finalf.write("    bge  $t1, $t2, " + quad_program_list[sq][3] + "\n")
+        elif quad_program_list[sq][0] == "=":
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("L" + str(sq) + ":\n")
+            finalf.write("    beq  $t1, $t2, " + quad_program_list[sq][3] + "\n")
+        elif quad_program_list[sq][0] == "<":
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("L" + str(sq) + ":\n")
+            finalf.write("    blt  $t1, $t2, " + quad_program_list[sq][3] + "\n")
+        elif quad_program_list[sq][0] == ">":
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("L" + str(sq) + ":\n")
+            finalf.write("    bgt  $t1, $t2, " + quad_program_list[sq][3] + "\n")
+        elif quad_program_list[sq][0] == "<>":
+            loadvr(quad_program_list[sq][1], "1")
+            loadvr(quad_program_list[sq][2], "2")
+            finalf.write("L" + str(sq) + ":\n")
+            finalf.write("    bne  $t1, $t2, " + quad_program_list[sq][3] + "\n")
+        elif quad_program_list[sq][0] == "jump":
+            finalf.write("L" + str(sq) + ":\n")
+            finalf.write("    j  " + "L" + quad_program_list[sq][3] + "\n")
+        elif quad_program_list[sq][0] == "retv":
+            finalf.write("L" + str(sq) + ":\n")
+            loadvr(quad_program_list[sq][1], "1")
+            finalf.write("    lw  $t0, -8($sp)\n")
+            finalf.write("    sw  $t1, ($t0)\n")
+        elif quad_program_list[sq][0] == "inp":
+            finalf.write("L" + str(sq) + ":\n")
+            finalf.write("    li  $v0, 5\n")
+            finalf.write("    syscall\n")
+            finalf.write("    move $t0, $v0\n")
+            storerv("0", quad_program_list[sq][1])
+        elif quad_program_list[sq][0] == "out":
+            finalf.write("L" + str(sq) + ":\n")
+            finalf.write("    li  $v0, 1\n")
+            finalf.write("    li  $a0, " + quad_program_list[sq][1] + "\n")            
+            finalf.write("    syscall\n")
+        elif quad_program_list[sq][0] == "halt":
+            finalf.write("L" + str(sq) + ":\n")
+            '''finalf.write("    addiu  $v0, $zero, 10\n")
+            finalf.write("    syscall\n") '''
+        elif quad_program_list[sq][0] == "par":
+            finalf.write("L" + str(sq) + ":\n")
+            if counter == 0:
+                finalf.write("    add  $fp, $sp, " + str(entity.framelength) + "\n")
+            if quad_program_list[sq][2] == "CV":
+                loadvr(quad_program_list[sq][1], "0")
+                finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n")
+            elif quad_program_list[sq][2] == "REF":
+                refCases(entity, counter)
+            elif quad_program_list[sq][2] == "CP":
+                print("")
+                ####
+            elif quad_program_list[sq][2] == "RET":
+                f, nl = searchEntity(quad_program_list[sq][1])
+                finalf.write("    add  $t0, $sp, -" + str(f.offset) + "\n")
+                finalf.write("    sw  $t0, -8($fp)\n")
+            counter += 1
+        elif quad_program_list[sq][0] == "call":
+            f, nl = searchEntity(entity.name)
+            finalf.write("L" + str(sq) + ":\n")
+            if nl == symbolList[-1].nestingLevel:
+                finalf.write("    lw  $t0, -4($sp)\n")
+                finalf.write("    sw  $t0, -4($fp)\n")
+            elif nl < symbolList[-1].nestingLevel:
+                finalf.write("    sw  $sp, -4($fp)\n")
+            finalf.write("    add  $sp, $sp, " + str(entity.framelength) + "\n")
+            finalf.write("    jal L" + str(entity.startQuad) + "\n")
+            finalf.write("    add  $sp, $sp, -" + str(entity.framelength) + "\n")
+        sq += 1
+            
+        
+        
+def refCases(entity, counter):
+    global finalf
+    currentnl = symbolList[-1].nestingLevel
+    var = quad_program_list[entity.startQuad][1]                         
+    e, nl = searchEntity(var)
+    if nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "in"):
+        finalf.write("    add  $t0, $sp, -" + str(var.offset) + "\n")
+        finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n")        
+    elif nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "inandout"):
+        print("")
+        #####
+    elif nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "inout"):    
+        finalf.write("    lw  $t0, -" + str(var.offset) + "($sp)\n")
+        finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n")
+    elif nl < currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "in"):
+        gnlvcode(var)
+        finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n")        
+    elif nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "inandout"):
+        gnlvcode(var)
+        #####
+    elif nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "inout"):    
+        gnlvcode(var)
+        finalf.write("    lw  $t0, ($t0)\n")
+        finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n") 
+            
 
 #-----Intermediate code functions-----#
 def next_quad(): #returns the number of the next quadruple that will be produced 
@@ -507,6 +662,7 @@ def block(name, returnList = []):
         symbolList[-1].framelength = f.framelength
     print("BEFORE ERASURE")
     printSymbolList()
+    producemipsfile(f)
     deleteScope()
     print("UPDATED ARRAY")
     printSymbolList()
@@ -1213,6 +1369,7 @@ if(len(sys.argv)<2):
 tokens = sys.argv[1].split(".") #keep file name without the ending, to create intermediate code file and C file
 f = open(sys.argv[1], 'r') #read file name as command line argument
 finalf = open(tokens[0] + '.asm', 'w')
+finalf.write("    j  Lmain\n")
 program()
 if(not (endOfFile or tokenID=='EOF')):
     print('Syntax error: Cannot recognize characters after "endprogram".')
