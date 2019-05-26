@@ -61,6 +61,8 @@ enableReturnSearch = False #detects return statements outside functions
 #-----Final Code global variables-----#
 mainStartQuad = 0
 paramCounter = 0  #count number of parameters when saving values to callee function
+cpCallPos = list() #stores the number of the inandout parameter when a function is called, e.g. if x(a,b,c,d) and d=inandout --> cpCallPos = [3]
+cpVarNames = list()#stores the corresponding parameter's name
 
 #Display errors and terminate
 def displayError(msg): #Prints error message and terminates compiler
@@ -201,13 +203,15 @@ def gnlvcode(v):
     finalf.write("    lw  $t0, -4($sp)\n")
     for i in range(n):
         finalf.write("    lw  $t0, -4($t0)\n")
-    finalf.write("    addi  $t0, $t0, -" + entity.offset + "\n")
+    finalf.write("    addi  $t0, $t0, -" + str(entity.offset) + "\n")
 
 def loadvr(v, r):
     global finalf
     currentnl = symbolList[-1].nestingLevel
     entity = None
     nl = -1
+    if "-" in v: #negative numbers
+        v = v[1:]
     if not v.isdigit():
         entity, nl = searchEntity(v)
     if v.isdigit():
@@ -262,15 +266,17 @@ def storerv(r, v):
     else:
         displayError("Something went wrong at storing value.")
 
-###photini's attempt
 def producemipsfile(quadlist, sq, framelength, funcname):
-    global finalf, paramCounter
+    global finalf, paramCounter, inandoutCounter, cpDetected
     print(quadlist)
     if quadlist[0] == "begin_block" and quadlist[1] != programName:
         finalf.write("L" + str(sq) + ":\n    sw  $ra, ($sp)\n")
     elif quadlist[0] == "begin_block" and quadlist[1] == programName:
         ####
         finalf.write("Lmain:\n\n")
+        finalf.write("    add  $sp, $sp, " + str(mainFramelength) + "\n")
+        finalf.write("    move  $s0, $sp\n")
+        #doesn't need to save ra
     elif quadlist[0] == "end_block" and quadlist[1] != programName:
         finalf.write("L" + str(sq) + ":\n    lw  $ra, ($sp)\n")
         finalf.write("    jr  $ra\n")
@@ -278,14 +284,14 @@ def producemipsfile(quadlist, sq, framelength, funcname):
     elif quadlist[0] == "end_block" and quadlist[1] == programName:
         #print("Nothing to do!")
         ####
-        finalf.write("\n\n\n\n")
+        '''finalf.write("\n\n\n\n")
         finalf.write(".data\n")
         printvars = list()
         for q in quad_program_list:
             if quad_program_list[q][0] == "out" and not quad_program_list[q][1].isdigit() and (not quad_program_list[q][1] in printvars):
                 printvars.append(quad_program_list[q][1])
         for el in printvars:
-            finalf.write("    " + el + ":  .word 4\n")      
+            finalf.write("    " + el + ": \n")   '''   
     #assignments
     elif quadlist[0] == ":=":
         finalf.write("L" + str(sq) + ":\n")
@@ -368,11 +374,22 @@ def producemipsfile(quadlist, sq, framelength, funcname):
     elif quadlist[0] == "out":
         finalf.write("L" + str(sq) + ":\n")
         finalf.write("    li  $v0, 1\n")
-        ###finalf.write("    li  $a0, " + quadlist[1] + "\n") 
-        if quadlist[1].isdigit():
+        ###finalf.write("    li  $a0, " + quadlist[1] + "\n")
+        if quadlist[1].isdigit() or ("-" in quadlist[1] and quadlist[1][1:].isdigit()):
             finalf.write("    li  $a0, " + quadlist[1] + "\n")
         else:
-            finalf.write("    lw  $a0, " + quadlist[1] + "\n")            
+            ###
+            var, varnl = searchEntity(quadlist[1])
+            currentnl = symbolList[-1].nestingLevel
+            if varnl == currentnl:
+                finalf.write("    add  $t0, $sp, -" + str(var.offset) + "\n")
+                finalf.write("    lw  $a0, ($t0)\n")
+            else:
+                gnlvcode(quadlist[1])
+                finalf.write("    lw  $a0, ($t0)\n")
+            #loadvr(quadlist[1], '0')
+            
+            #finalf.write("    lw  $a0, " + quadlist[1] + "\n")            
         finalf.write("    syscall\n")
     #halt
     elif quadlist[0] == "halt":
@@ -381,6 +398,7 @@ def producemipsfile(quadlist, sq, framelength, funcname):
         finalf.write("    syscall\n") '''
     #parameters
     elif quadlist[0] == "par":
+        numofCPs = 0
         callee = None
         calleenl = -1
         finalf.write("L" + str(sq) + ":\n")
@@ -394,19 +412,33 @@ def producemipsfile(quadlist, sq, framelength, funcname):
                 if enabled == True and quad_program_list[q][0] == "call":
                     functionName = quad_program_list[q][1]
                     break
-            ###end of cheat
+                #cheat for inandout
+                '''if enabled == True and quad_program_list[q][0] == "par" and quad_program_list[q][2] == "CP":
+                    numofCPs += 1 #need it just for the very first command, to move s7 register
+                    #---------#
+                    ###inandoutCounter += 1
+                    #---------#
+            ###end of cheat'''
+            #move s7 reg for inandout values, fp should continue after that stack space
+            #--------#
+            #finalf.write("    addi  $s7, $sp, " + str(inandoutCounter * 4) + "\n")
+            #inandoutCounter = 0 #start counting again
+            #--------#
+            #finalf.write("    addi  $s7, $sp, " + str(numofCPs * 4) + "\n")
+            
             callee, calleenl = searchEntity(functionName)#search for callee's entity
-            finalf.write("    add  $fp, $sp, " + str(callee.framelength) + "\n") #framelength of callee function
+            finalf.write("    add  $fp, $sp, " + str(callee.framelength) + "\n")
+            #finalf.write("    add  $fp, $sp, " + str(callee.framelength) + "\n") #framelength of callee function
         if quadlist[2] == "CV":
             loadvr(quadlist[1], "0")
             finalf.write("    sw  $t0, -" + str(12 + 4*paramCounter) + "($fp)\n")
         elif quadlist[2] == "REF":
             refParameterActions(quadlist[1])
         elif quadlist[2] == "CP":
-            '''loadvr(quadlist[1], "0")
-            finalf.write("    sw  $t0, -" + str(12 + 4*paramCounter) + "($fp)\n")'''
-            print("inandout")
-            ####
+            cpCallPos.append(paramCounter)
+            cpVarNames.append(quadlist[1])
+            loadvr(quadlist[1], "0")
+            finalf.write("    sw  $t0, -" + str(12 + 4*paramCounter) + "($fp)\n")
         elif quadlist[2] == "RET":
             f, nl = searchEntity(quadlist[1]) #search temp variable entity and use its offset
             finalf.write("    add  $t0, $sp, -" + str(f.offset) + "\n")
@@ -433,8 +465,43 @@ def producemipsfile(quadlist, sq, framelength, funcname):
             finalf.write("    sw  $sp, -4($fp)\n")
         finalf.write("    add  $sp, $sp, " + str(f.framelength) + "\n")
         finalf.write("    jal L" + str(f.startQuad) + "\n")
+        #print(cpVarNames)
+        #print(cpCallPos)
+        for i in range(len(cpCallPos)):
+            var, varnl = searchEntity(cpVarNames[i])
+            finalf.write("    lw  $t0, -" + str(12 + 4*cpCallPos[i]) + "($sp)\n")
+            storerv("0", cpVarNames[i])
         finalf.write("    add  $sp, $sp, -" + str(f.framelength) + "\n")
         paramCounter = 0 #set to zero for next function execution in the same block
+        inandoutCounter = 0
+        
+
+'''def inandoutParameterActions(varname):
+    #global inandoutCounter, finalf
+    currentnl = symbolList[-1].nestingLevel
+    #if inandoutCounter != 0: #inandout pars exist
+       if inandoutCounter == 1:
+            finalf.write("    addi  $s7, $sp, 4\n")
+        else:
+            finalf.write("    addi  $s7, $s7, 4\n")
+    var, varnl = searchEntity(varname)
+    if varnl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and (var.parMode == "in"
+                                                                                                    or var.parMode == "inandout")):
+        finalf.write("    add  $t0, $sp, -" + str(var.offset) + "\n")
+        finalf.write("    sw  $t0, -" + str(4*(len(cpCallPos)-1)) + "($s7)\n")
+    elif varnl == currentnl and var.entity_type == "parameter" and var.parMode == "inout":
+        finalf.write("    lw  $t0, -" + str(var.offset) + "($sp)\n")
+        finalf.write("    sw  $t0, -" + str(4*(len(cpCallPos)-1)) + "($s7)\n")
+    elif varnl < currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and (var.parMode == "in"
+                                                                                                     or var.parMode == "inandout")):
+        gnlvcode(varname)
+        finalf.write("    sw  $t0, -" + str(4*(len(cpCallPos)-1)) + "($s7)\n")
+    elif varnl < currentnl and var.entity_type == "parameter" and var.parMode == "inout":
+        gnlvcode(varname)
+        finalf.write("    lw $t0, ($t0)\n")
+        finalf.write("    sw $t0, -" + str(4*(len(cpCallPos)-1)) + "($s7)\n")'''
+
+        
 
 def refParameterActions(varname):
     global finalf, paramCounter
@@ -457,165 +524,7 @@ def refParameterActions(varname):
         finalf.write("    lw $t0, ($t0)\n")
         finalf.write("    sw $t0, -" + str(12 + 4*paramCounter) + "($fp)\n")
     
-
-
-###################################################
-'''def producemipsfile(entity):
-    global finalf
-    counter = 0
-    sq = int(entity.startQuad)
-    while sq > 0:
-        if quad_program_list[sq][0] == 'begin_block' and quad_program_list[sq][1] != programName:
-            finalf.write("L" + str(sq) + ":\n    sw  $ra, ($sp)\n")
-        elif quad_program_list[sq][0] == 'begin_block' and quad_program_list[sq][1] == programName:
-            ####
-            finalf.write("Lmain:\n")
-        elif quad_program_list[sq][0] == 'end_block' and quad_program_list[sq][1] != programName:
-            finalf.write("L" + str(sq) + ":\n    lw  $ra, ($sp)\n")
-            finalf.write("    jr  $ra\n")
-            break
-            ####inandout shit
-        elif quad_program_list[sq][0] == 'end_block' and quad_program_list[sq][1] == programName:
-            break
-            ####
-        elif quad_program_list[sq][0] == ":=":
-            finalf.write("L" + str(sq) + ":\n")
-            loadvr(quad_program_list[sq][1], "1")
-            storerv("1", quad_program_list[sq][3])
-        elif quad_program_list[sq][0] == "+":
-            finalf.write("L" + str(sq) + ":\n")
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("    add  $t1, $t1, $t2\n")
-            storerv("1", quad_program_list[sq][3])
-        elif quad_program_list[sq][0] == "-":
-            finalf.write("L" + str(sq) + ":\n")
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("    sub  $t1, $t1, $t2\n")
-            storerv("1", quad_program_list[sq][3])
-        elif quad_program_list[sq][0] == "*":
-            finalf.write("L" + str(sq) + ":\n")
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("    mul  $t1, $t1, $t2\n")
-            storerv("1", quad_program_list[sq][3])
-        elif quad_program_list[sq][0] == "/":
-            finalf.write("L" + str(sq) + ":\n")
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("    div  $t1, $t1, $t2\n")
-            storerv("1", quad_program_list[sq][3])
-        elif quad_program_list[sq][0] == "<=":
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("L" + str(sq) + ":\n")
-            finalf.write("    ble  $t1, $t2, " + quad_program_list[sq][3] + "\n")
-        elif quad_program_list[sq][0] == ">=":
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("L" + str(sq) + ":\n")
-            finalf.write("    bge  $t1, $t2, " + quad_program_list[sq][3] + "\n")
-        elif quad_program_list[sq][0] == "=":
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("L" + str(sq) + ":\n")
-            finalf.write("    beq  $t1, $t2, " + quad_program_list[sq][3] + "\n")
-        elif quad_program_list[sq][0] == "<":
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("L" + str(sq) + ":\n")
-            finalf.write("    blt  $t1, $t2, " + quad_program_list[sq][3] + "\n")
-        elif quad_program_list[sq][0] == ">":
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("L" + str(sq) + ":\n")
-            finalf.write("    bgt  $t1, $t2, " + quad_program_list[sq][3] + "\n")
-        elif quad_program_list[sq][0] == "<>":
-            loadvr(quad_program_list[sq][1], "1")
-            loadvr(quad_program_list[sq][2], "2")
-            finalf.write("L" + str(sq) + ":\n")
-            finalf.write("    bne  $t1, $t2, " + quad_program_list[sq][3] + "\n")
-        elif quad_program_list[sq][0] == "jump":
-            finalf.write("L" + str(sq) + ":\n")
-            finalf.write("    j  " + "L" + quad_program_list[sq][3] + "\n")
-        elif quad_program_list[sq][0] == "retv":
-            finalf.write("L" + str(sq) + ":\n")
-            loadvr(quad_program_list[sq][1], "1")
-            finalf.write("    lw  $t0, -8($sp)\n")
-            finalf.write("    sw  $t1, ($t0)\n")
-        elif quad_program_list[sq][0] == "inp":
-            finalf.write("L" + str(sq) + ":\n")
-            finalf.write("    li  $v0, 5\n")
-            finalf.write("    syscall\n")
-            finalf.write("    move $t0, $v0\n")
-            storerv("0", quad_program_list[sq][1])
-        elif quad_program_list[sq][0] == "out":
-            finalf.write("L" + str(sq) + ":\n")
-            finalf.write("    li  $v0, 1\n")
-            finalf.write("    li  $a0, " + quad_program_list[sq][1] + "\n")            
-            finalf.write("    syscall\n")
-        elif quad_program_list[sq][0] == "halt":
-            finalf.write("L" + str(sq) + ":\n")
-            #finalf.write("    addiu  $v0, $zero, 10\n")
-            #finalf.write("    syscall\n") 
-        elif quad_program_list[sq][0] == "par":
-            finalf.write("L" + str(sq) + ":\n")
-            if counter == 0:
-                finalf.write("    add  $fp, $sp, " + str(entity.framelength) + "\n")
-            if quad_program_list[sq][2] == "CV":
-                loadvr(quad_program_list[sq][1], "0")
-                finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n")
-            elif quad_program_list[sq][2] == "REF":
-                refCases(entity, counter)
-            elif quad_program_list[sq][2] == "CP":
-                print("")
-                ####
-            elif quad_program_list[sq][2] == "RET":
-                f, nl = searchEntity(quad_program_list[sq][1])
-                finalf.write("    add  $t0, $sp, -" + str(f.offset) + "\n")
-                finalf.write("    sw  $t0, -8($fp)\n")
-            counter += 1
-        elif quad_program_list[sq][0] == "call":
-            f, nl = searchEntity(entity.name)
-            finalf.write("L" + str(sq) + ":\n")
-            if nl == symbolList[-1].nestingLevel:
-                finalf.write("    lw  $t0, -4($sp)\n")
-                finalf.write("    sw  $t0, -4($fp)\n")
-            elif nl < symbolList[-1].nestingLevel:
-                finalf.write("    sw  $sp, -4($fp)\n")
-            finalf.write("    add  $sp, $sp, " + str(entity.framelength) + "\n")
-            finalf.write("    jal L" + str(entity.startQuad) + "\n")
-            finalf.write("    add  $sp, $sp, -" + str(entity.framelength) + "\n")
-        sq += 1
-            
-        
-        
-def refCases(entity, counter):
-    global finalf
-    currentnl = symbolList[-1].nestingLevel
-    var = quad_program_list[entity.startQuad][1]                         
-    e, nl = searchEntity(var)
-    if nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "in"):
-        finalf.write("    add  $t0, $sp, -" + str(var.offset) + "\n")
-        finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n")        
-    elif nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "inandout"):
-        print("")
-        #####
-    elif nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "inout"):    
-        finalf.write("    lw  $t0, -" + str(var.offset) + "($sp)\n")
-        finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n")
-    elif nl < currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "in"):
-        gnlvcode(var)
-        finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n")        
-    elif nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "inandout"):
-        gnlvcode(var)
-        #####
-    elif nl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and var.parMode == "inout"):    
-        gnlvcode(var)
-        finalf.write("    lw  $t0, ($t0)\n")
-        finalf.write("    sw  $t0, -" + str(12 + 4*counter) + "($fp)\n") '''
-            
+    
 
 #-----Intermediate code functions-----#
 def next_quad(): #returns the number of the next quadruple that will be produced 
@@ -835,8 +744,9 @@ def program():
         displayError('Error3: Expecting binded word "program", instead of "' + tokenID + '"\nTerminating program')
 
 def block(name, returnList = []):
-    global mainFramelength, enableReturnSearch, mainStartQuad, paramCounter
+    global mainFramelength, enableReturnSearch, mainStartQuad, paramCounter, inandoutCounter
     paramCounter = 0 #set to zero every time a new block is executed
+    inandoutCounter = 0
     f = None
     declarations()
     subprograms()
