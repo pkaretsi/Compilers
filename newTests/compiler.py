@@ -172,15 +172,6 @@ def deleteScope():
     del symbolList[-1]
 
 def searchEntity(name):
-#def searchEntity(name, nl): #search specific entity starting from a nesting level nl and going backwards
-    '''pos = -1
-    for scope in symbolList:
-        if scope.nestingLevel == nl:
-            pos = symbolList.index(scope)
-            break
-    if pos == -1:
-        displayError("Wrong nesting level")
-    else:'''
     for s in range(len(symbolList)-1, -1 ,-1):
         for e in symbolList[s].scopelist:
             if e.name == name:
@@ -193,7 +184,6 @@ def searchVariableOrParameter(sc):
             if sc.scopelist[i].entity_type == "variable" or sc.scopelist[i].entity_type == "parameter":
                 return sc.scopelist[i]
     return None
-
 
 #-----Final code functions-----#
 def gnlvcode(v):
@@ -210,32 +200,29 @@ def loadvr(v, r):
     currentnl = symbolList[-1].nestingLevel
     entity = None
     nl = -1
+    temp = v
     if "-" in v: #negative numbers
         v = v[1:]
     if not v.isdigit():
         entity, nl = searchEntity(v)
     if v.isdigit():
-        finalf.write("    li  $t" + r + ", " + v + "\n")
+        if temp != v:
+            finalf.write("    li  $t" + r + ", " + temp + "\n")
+        else:
+            finalf.write("    li  $t" + r + ", " + v + "\n")
     elif nl == 0: #nl=0 equals to main function --> global variable
         finalf.write("    lw  $t" + r + ", -" + str(entity.offset) + "($s0)\n")
     elif nl == currentnl and (entity.entity_type == "variable"
-                              or (entity.entity_type == "parameter" and entity.parMode == "in")): ####local var, temp var and formal par passed by value
+                              or (entity.entity_type == "parameter" and (entity.parMode == "in" or entity.parMode == "inandout"))): #local var, temp var and formal par passed by value or by value-restore
         finalf.write("    lw  $t" + r + ", -" + str(entity.offset) + "($sp)\n")
-    elif nl == currentnl and (entity.entity_type == "parameter" and entity.parMode == "inandout") :
-        finalf.write("    lw  $t" + r + ", -" + str(entity.offset) + "($sp)\n")
-        ######
-    elif nl == currentnl and (entity.entity_type == "parameter" and entity.parMode == "inout") : #formal par passed by reference/copy
+    elif nl == currentnl and (entity.entity_type == "parameter" and entity.parMode == "inout") : #formal par passed by reference
         finalf.write("    lw  $t0, -" + str(entity.offset) + "($sp)\n")
         finalf.write("    lw  $t" + r + ", ($t0)\n")
-    elif nl < currentnl and (entity.entity_type == "parameter" and entity.parMode == "inandout") :
-        gnlvcode(v)
-        finalf.write("    lw  $t" + r + ", ($t0)\n")
-        #####
     elif nl < currentnl and (entity.entity_type == "variable"
-                              or (entity.entity_type == "parameter" and entity.parMode == "in")): #case 5
+                              or (entity.entity_type == "parameter" and (entity.parMode == "in" or entity.parMode == "inandout"))): #local var or formal par passed by value or by value-restore and nl < currentnl
         gnlvcode(v)
         finalf.write("    lw  $t" + r + ", ($t0)\n")
-    elif nl < currentnl and (entity.entity_type == "parameter" and entity.parMode == "inout"): #case 6
+    elif nl < currentnl and (entity.entity_type == "parameter" and entity.parMode == "inout"): #formal par passed by reference and nl < currentnl
         gnlvcode(v)
         finalf.write("    lw  $t0, ($t0)\n")
         finalf.write("    lw  $t" + r + ", ($t0)\n")
@@ -250,16 +237,16 @@ def storerv(r, v):
     if nl == 0: #global var
         finalf.write("    sw  $t" + r + ", -" + str(entity.offset) + "($s0)\n")
     elif nl == currentnl and (entity.entity_type == "variable"
-                              or (entity.entity_type == "parameter" and (entity.parMode == "in" or entity.parMode == "inandout"))): ####local var, temp var and formal par passed by value
+                              or (entity.entity_type == "parameter" and (entity.parMode == "in" or entity.parMode == "inandout"))): #local var, temp var and formal par passed by value or value/restore
         finalf.write("    sw  $t" + r + ", -" + str(entity.offset) + "($sp)\n")
     elif nl == currentnl and entity.entity_type == "parameter" and entity.parMode == "inout": #formal par passed by reference
         finalf.write("    lw  $t0, -" + str(entity.offset) + "($sp)\n")
         finalf.write("    sw  $t" + r + ",($t0)\n")
     elif nl < currentnl and (entity.entity_type == "variable"
-                              or (entity.entity_type == "parameter" and (entity.parMode == "in" or entity.parMode == "inandout"))):
+                              or (entity.entity_type == "parameter" and (entity.parMode == "in" or entity.parMode == "inandout"))): #local var or formal par passed by value or by value-restore and nl < currentnl
         gnlvcode(v)
         finalf.write("    sw  $t" + r + ",($t0)\n")
-    elif nl < currentnl and entity.entity_type == "parameter" and entity.parMode == "inout":
+    elif nl < currentnl and entity.entity_type == "parameter" and entity.parMode == "inout": #formal par passed by reference and nl < currentnl
         gnlvcode(v)
         finalf.write("    lw  $t0, ($t0)\n")
         finalf.write("    sw  $t" + r + ",($t0)\n")
@@ -267,12 +254,10 @@ def storerv(r, v):
         displayError("Something went wrong at storing value.")
 
 def producemipsfile(quadlist, sq, framelength, funcname):
-    global finalf, paramCounter, inandoutCounter, cpDetected
-    print(quadlist)
+    global finalf, paramCounter
     if quadlist[0] == "begin_block" and quadlist[1] != programName:
         finalf.write("L" + str(sq) + ":\n    sw  $ra, ($sp)\n")
     elif quadlist[0] == "begin_block" and quadlist[1] == programName:
-        ####
         finalf.write("Lmain:\n\n")
         finalf.write("    add  $sp, $sp, " + str(mainFramelength) + "\n")
         finalf.write("    move  $s0, $sp\n")
@@ -280,18 +265,7 @@ def producemipsfile(quadlist, sq, framelength, funcname):
     elif quadlist[0] == "end_block" and quadlist[1] != programName:
         finalf.write("L" + str(sq) + ":\n    lw  $ra, ($sp)\n")
         finalf.write("    jr  $ra\n")
-        ####inandout shit
-    elif quadlist[0] == "end_block" and quadlist[1] == programName:
-        #print("Nothing to do!")
-        ####
-        '''finalf.write("\n\n\n\n")
-        finalf.write(".data\n")
-        printvars = list()
-        for q in quad_program_list:
-            if quad_program_list[q][0] == "out" and not quad_program_list[q][1].isdigit() and (not quad_program_list[q][1] in printvars):
-                printvars.append(quad_program_list[q][1])
-        for el in printvars:
-            finalf.write("    " + el + ": \n")   '''   
+    #elif quadlist[0] == "end_block" and quadlist[1] == programName:
     #assignments
     elif quadlist[0] == ":=":
         finalf.write("L" + str(sq) + ":\n")
@@ -374,11 +348,9 @@ def producemipsfile(quadlist, sq, framelength, funcname):
     elif quadlist[0] == "out":
         finalf.write("L" + str(sq) + ":\n")
         finalf.write("    li  $v0, 1\n")
-        ###finalf.write("    li  $a0, " + quadlist[1] + "\n")
         if quadlist[1].isdigit() or ("-" in quadlist[1] and quadlist[1][1:].isdigit()):
             finalf.write("    li  $a0, " + quadlist[1] + "\n")
         else:
-            ###
             var, varnl = searchEntity(quadlist[1])
             currentnl = symbolList[-1].nestingLevel
             if varnl == currentnl:
@@ -386,10 +358,7 @@ def producemipsfile(quadlist, sq, framelength, funcname):
                 finalf.write("    lw  $a0, ($t0)\n")
             else:
                 gnlvcode(quadlist[1])
-                finalf.write("    lw  $a0, ($t0)\n")
-            #loadvr(quadlist[1], '0')
-            
-            #finalf.write("    lw  $a0, " + quadlist[1] + "\n")            
+                finalf.write("    lw  $a0, ($t0)\n")          
         finalf.write("    syscall\n")
     #halt
     elif quadlist[0] == "halt":
@@ -403,7 +372,7 @@ def producemipsfile(quadlist, sq, framelength, funcname):
         calleenl = -1
         finalf.write("L" + str(sq) + ":\n")
         if paramCounter == 0:
-            ###cheat
+            #search for function name in order to get the right framelength afterwards
             enabled = False
             functionName = ""
             for q in quad_program_list:
@@ -412,23 +381,8 @@ def producemipsfile(quadlist, sq, framelength, funcname):
                 if enabled == True and quad_program_list[q][0] == "call":
                     functionName = quad_program_list[q][1]
                     break
-                #cheat for inandout
-                '''if enabled == True and quad_program_list[q][0] == "par" and quad_program_list[q][2] == "CP":
-                    numofCPs += 1 #need it just for the very first command, to move s7 register
-                    #---------#
-                    ###inandoutCounter += 1
-                    #---------#
-            ###end of cheat'''
-            #move s7 reg for inandout values, fp should continue after that stack space
-            #--------#
-            #finalf.write("    addi  $s7, $sp, " + str(inandoutCounter * 4) + "\n")
-            #inandoutCounter = 0 #start counting again
-            #--------#
-            #finalf.write("    addi  $s7, $sp, " + str(numofCPs * 4) + "\n")
-            
             callee, calleenl = searchEntity(functionName)#search for callee's entity
             finalf.write("    add  $fp, $sp, " + str(callee.framelength) + "\n")
-            #finalf.write("    add  $fp, $sp, " + str(callee.framelength) + "\n") #framelength of callee function
         if quadlist[2] == "CV":
             loadvr(quadlist[1], "0")
             finalf.write("    sw  $t0, -" + str(12 + 4*paramCounter) + "($fp)\n")
@@ -455,58 +409,24 @@ def producemipsfile(quadlist, sq, framelength, funcname):
         #if nl > caller_nl, callee is a child of caller
         finalf.write("L" + str(sq) + ":\n")
         if paramCounter == 0:
-            finalf.write("    add  $fp, $sp, " + str(f.framelength) + "\n") ###when having no actual parameters
-        #if nl == symbolList[-1].nestingLevel:
+            finalf.write("    add  $fp, $sp, " + str(f.framelength) + "\n") #when having no actual parameters
         if nl == caller_nl:
             finalf.write("    lw  $t0, -4($sp)\n")
             finalf.write("    sw  $t0, -4($fp)\n")
-        #elif nl > symbolList[-1].nestingLevel: #nl corresponds to callee function, nl should be greater than the other nestlevel
         elif nl > caller_nl:
             finalf.write("    sw  $sp, -4($fp)\n")
         finalf.write("    add  $sp, $sp, " + str(f.framelength) + "\n")
         finalf.write("    jal L" + str(f.startQuad) + "\n")
-        #print(cpVarNames)
-        #print(cpCallPos)
         for i in range(len(cpCallPos)):
             var, varnl = searchEntity(cpVarNames[i])
             finalf.write("    lw  $t0, -" + str(12 + 4*cpCallPos[i]) + "($sp)\n")
             storerv("0", cpVarNames[i])
         finalf.write("    add  $sp, $sp, -" + str(f.framelength) + "\n")
-        paramCounter = 0 #set to zero for next function execution in the same block
-        inandoutCounter = 0
-        
-
-'''def inandoutParameterActions(varname):
-    #global inandoutCounter, finalf
-    currentnl = symbolList[-1].nestingLevel
-    #if inandoutCounter != 0: #inandout pars exist
-       if inandoutCounter == 1:
-            finalf.write("    addi  $s7, $sp, 4\n")
-        else:
-            finalf.write("    addi  $s7, $s7, 4\n")
-    var, varnl = searchEntity(varname)
-    if varnl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and (var.parMode == "in"
-                                                                                                    or var.parMode == "inandout")):
-        finalf.write("    add  $t0, $sp, -" + str(var.offset) + "\n")
-        finalf.write("    sw  $t0, -" + str(4*(len(cpCallPos)-1)) + "($s7)\n")
-    elif varnl == currentnl and var.entity_type == "parameter" and var.parMode == "inout":
-        finalf.write("    lw  $t0, -" + str(var.offset) + "($sp)\n")
-        finalf.write("    sw  $t0, -" + str(4*(len(cpCallPos)-1)) + "($s7)\n")
-    elif varnl < currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and (var.parMode == "in"
-                                                                                                     or var.parMode == "inandout")):
-        gnlvcode(varname)
-        finalf.write("    sw  $t0, -" + str(4*(len(cpCallPos)-1)) + "($s7)\n")
-    elif varnl < currentnl and var.entity_type == "parameter" and var.parMode == "inout":
-        gnlvcode(varname)
-        finalf.write("    lw $t0, ($t0)\n")
-        finalf.write("    sw $t0, -" + str(4*(len(cpCallPos)-1)) + "($s7)\n")'''
-
-        
+        paramCounter = 0 #set to zero for next function execution in the same block        
 
 def refParameterActions(varname):
     global finalf, paramCounter
     var, varnl = searchEntity(varname)
-    #func_enity, funcnl = searchEntity(funcname) #do not need it, caller function is the one executed, so the last scope on symbolList
     currentnl = symbolList[-1].nestingLevel
     if varnl == currentnl and var.entity_type == "variable" or (var.entity_type == "parameter" and (var.parMode == "in"
                                                                                                     or var.parMode == "inandout")):
@@ -752,7 +672,6 @@ def block(name, returnList = []):
     subprograms()
     if name != programName:
         f, nl = searchEntity(name)
-        #f, nl = searchEntity(name, symbolList[-1].nestingLevel)
         f.startQuad = next_quad()
     gen_quad("begin_block", name)
     if name == programName:
@@ -775,32 +694,24 @@ def block(name, returnList = []):
         symbolList[-1].framelength = f.framelength
     print("BEFORE ERASURE")
     printSymbolList()
-    ###producemipsfile(f)
-    ######
     quadlist = list()
     if(f != None): #case function
-        sq = int(f.startQuad) #sq is string, because it is assigned with next_quad values, which are strings
-        #run until find end_block, after that single producemipsfile to end function block
-        #startQuad is string, but label is integer, that's why it throws keyError 0 because there is not a key '0', but only 0
-        while(sq >=0 and quad_program_list[sq][0] != "end_block"):# and quad_program_list[sq][1] != programName):
+        sq = int(f.startQuad)
+        while(sq >=0 and quad_program_list[sq][0] != "end_block"):
             producemipsfile(quad_program_list[sq], sq, f.framelength, f.name)
             sq += 1
-            quadlist = quad_program_list[sq] #
-        #####
-        #producemipsfile(quad_program_list[sq], sq, f.framelength)
+            quadlist = quad_program_list[sq]
         producemipsfile(quadlist, sq, f.framelength, f.name)
         sq += 1
         mainStartQuad = sq #where the last function ends, there main begins
     else:
         sq = mainStartQuad
-        while(quad_program_list[sq][0] != "end_block"): # and quad_program_list[sq][1] == programName):
+        while(quad_program_list[sq][0] != "end_block"):
             producemipsfile(quad_program_list[sq], sq, mainFramelength, programName)
             sq += 1
             quadlist = quad_program_list[sq]
         ##main's end_block
         producemipsfile(quadlist, sq, mainFramelength, programName)
-        #sq += 1, leave it here, but almost sure we do not need it
-    #####
     deleteScope()
     print("UPDATED ARRAY")
     printSymbolList()
