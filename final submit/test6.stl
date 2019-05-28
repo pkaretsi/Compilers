@@ -1,0 +1,90 @@
+//Foteini Karetsi, A.M. 2990, username: cse52990
+//Eleftheria Bella, A.M. 3039, username: cse53039
+
+program test6
+	declare a,b,c,d,e;
+	
+	function setE()
+		declare arg1, arg2, epsilon;
+		arg1 := a;
+		arg2 := arg1 + b;
+		epsilon := arg1 - (arg2/2);
+		print arg1;
+		print arg2;
+		return epsilon
+	endfunction
+	
+	function hasnested(in p, inout r, inandout s)
+		
+		function alpha(in par1)
+			declare temp1, temp2;
+			
+			function vita(inandout arg1, inandout arg2)
+				
+				arg1 := arg1 + 1;
+				arg2 := arg2 + 1;
+				incase
+					when (arg1 = arg2): print arg1+arg2; 
+										arg1 := 0;
+										arg2 := arg2 - 1
+				endincase;
+				print 888;
+				print arg1;
+				print arg2;
+				print 79;
+				forcase
+					when (arg1<>3): print 100
+					when ([a>5 and b>7 or e=3]): print a + b + 3
+					default: print arg2 enddefault
+				endforcase;
+				return arg1 + arg2
+			endfunction
+			
+			temp1 := a;
+			print temp1;
+			temp2 := vita(inandout temp1, inandout par1);
+			print temp2;
+			
+			if(temp1>2) then
+				print temp2*2;
+				temp2 := temp2 - 1
+			else
+				temp2 := temp2 + 1;
+				print temp2
+			endif;
+			return temp2
+		endfunction
+		
+		p := 3;
+		while (p<5)
+			p := p + 1;
+			r := alpha(in p);
+			print p;
+			print r
+		endwhile;
+		s := p*r + s;
+		return r
+	endfunction
+
+	a := 4;
+	print a;
+	b := 3;
+	print b;
+	c := 2;
+	print c;
+	d := 6;
+	print d;
+	e := setE();
+	print e;
+
+	while(a=4)
+		a := hasnested(in b, inout c, inandout d);
+		print a;
+		a := a + 2
+	endwhile;
+	print d;
+	print c
+endprogram	
+		
+		
+	
