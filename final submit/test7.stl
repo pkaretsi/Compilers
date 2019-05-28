@@ -1,0 +1,76 @@
+//Foteini Karetsi, A.M. 2990, username: cse52990
+//Eleftheria Bella, A.M. 3039, username: cse53039
+
+program test7
+	declare a,b,c,d,e;
+	
+	function setE()
+		declare arg1, arg2, epsilon;
+		arg1 := a;
+		arg2 := arg1 + b;
+		epsilon := arg1 - (arg2/2);
+		print arg1;
+		print arg2;
+		return epsilon
+	endfunction
+	
+	function hasnested(in p, inout r, inandout s)
+		
+		function alpha(in par1)
+			declare temp1, temp2;
+			
+			function vita(inandout arg1, inandout arg2)
+				
+				arg1 := arg1 + 1;
+				arg2 := arg2 + 1;
+				return arg1
+			endfunction
+			
+			temp1 := a;
+			print temp1;
+			par1 := vita(inandout temp1, inandout temp2);
+			print par1;
+			print temp1;
+			print temp2;
+			return temp2
+		endfunction
+		
+
+		while (p<5)
+			p := p + 1;
+			r := alpha(in p);
+			print p;
+			print r
+		endwhile;
+		s := p*r + s;
+		print s;
+		return p
+	endfunction
+
+	a := -2;
+	print a;
+	b := 3;
+	print b;
+	c := 7;
+	print c;
+	d := 5;
+	print d;
+	e := setE();
+	print e;
+
+	loop
+		if(e = -2) then
+			a := hasnested(in b, inout c, inandout d);
+			print d;
+			print c;
+			e := a / 3;
+			print a
+		else 
+			print e;
+			exit
+		endif	
+	endloop	
+endprogram	
+		
+		
+	
