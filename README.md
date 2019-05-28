@@ -6,4 +6,4 @@ Starlet is a non real programming language, developed during the course _"MYY802
 # Copyrights
 
 This software was developed by Eleftheria Bella and Foteini Karetsi 
-using version Python 3.5 and Python 3.7.2.
+using version Python 3.5.
