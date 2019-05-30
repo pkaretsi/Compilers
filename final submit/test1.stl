@@ -21,6 +21,7 @@ program test1
 		function alpha(in par1)
 			if(par1>2) then
 				print par1*2;
+				return par1;
 				par1 := par1 - 1
 			else
 				par1 := par1 + 1;
@@ -37,7 +38,7 @@ program test1
 		endwhile;
 		p := theta*r + p;
 		print a;
-		return a
+		return p
 	endfunction
 
 	b := 3;

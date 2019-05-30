@@ -252,7 +252,7 @@ def storerv(r, v):
     else:
         displayError("Something went wrong at storing value.")
 
-def producemipsfile(quadlist, sq, framelength, funcname):
+def producemipsfile(quadlist, sq, funcname):
     global finalf, paramCounter, cpCallPos, cpVarNames
     if quadlist[0] == "begin_block" and quadlist[1] != programName:
         finalf.write("L" + str(sq) + ":\n    sw  $ra, ($sp)\n")
@@ -261,9 +261,9 @@ def producemipsfile(quadlist, sq, framelength, funcname):
         finalf.write("    add  $sp, $sp, " + str(mainFramelength) + "\n")
         finalf.write("    move  $s0, $sp\n")
         #doesn't need to save $ra
-    elif quadlist[0] == "end_block" and quadlist[1] != programName:
-        finalf.write("L" + str(sq) + ":\n    lw  $ra, ($sp)\n")
-        finalf.write("    jr  $ra\n")
+    #elif quadlist[0] == "end_block" and quadlist[1] != programName:
+        #finalf.write("L" + str(sq) + ":\n    lw  $ra, ($sp)\n")
+        #finalf.write("    jr  $ra\n")
     #elif quadlist[0] == "end_block" and quadlist[1] == programName:
     #assignments
     elif quadlist[0] == ":=":
@@ -336,6 +336,8 @@ def producemipsfile(quadlist, sq, framelength, funcname):
         loadvr(quadlist[1], "1")
         finalf.write("    lw  $t0, -8($sp)\n")
         finalf.write("    sw  $t1, ($t0)\n")
+        finalf.write("    lw  $ra, ($sp)\n")
+        finalf.write("    jr  $ra\n")
     #input
     elif quadlist[0] == "inp":
         finalf.write("L" + str(sq) + ":\n")
@@ -657,9 +659,8 @@ def program():
         displayError('Error3: Expecting binded word "program", instead of "' + tokenID + '"\nTerminating program')
 
 def block(name, returnList = []):
-    global mainFramelength, enableReturnSearch, mainStartQuad, paramCounter, inandoutCounter
+    global mainFramelength, enableReturnSearch, mainStartQuad, paramCounter
     paramCounter = 0 #set to zero every time a new block is executed
-    inandoutCounter = 0
     f = None
     declarations()
     subprograms()
@@ -691,20 +692,20 @@ def block(name, returnList = []):
     if(f != None): #case function
         sq = int(f.startQuad)
         while(sq >=0 and quad_program_list[sq][0] != "end_block"):
-            producemipsfile(quad_program_list[sq], sq, f.framelength, f.name)
+            producemipsfile(quad_program_list[sq], sq, f.name)
             sq += 1
             quadlist = quad_program_list[sq]
-        producemipsfile(quadlist, sq, f.framelength, f.name)
+        producemipsfile(quadlist, sq, f.name)
         sq += 1
         mainStartQuad = sq #Main starts when all functions are compiled, this variable is updated every time a new block is compiled 
     else:
         sq = mainStartQuad
         while(quad_program_list[sq][0] != "end_block"):
-            producemipsfile(quad_program_list[sq], sq, mainFramelength, programName)
+            producemipsfile(quad_program_list[sq], sq, programName)
             sq += 1
             quadlist = quad_program_list[sq]
         ##main's end_block
-        producemipsfile(quadlist, sq, mainFramelength, programName)
+        producemipsfile(quadlist, sq, programName)
     deleteScope()
     print("UPDATED ARRAY")
     printSymbolList()
@@ -1040,7 +1041,7 @@ def incase_stat():
         lex()
         if(tokenID == '('):
             lex()
-            [cond_true , cond_false] = condition()
+            [cond_true, cond_false] = condition()
             if(tokenID == ')'):
                 lex()
                 if(tokenID == ':'):
